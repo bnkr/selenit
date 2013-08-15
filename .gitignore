@@ -1,5 +1,7 @@
 # Editor stuff
 *.sw[po]
+# Build
+*.py[co]
 # Buildout stuff
 bin/
 eggs/
