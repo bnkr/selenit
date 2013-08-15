@@ -1,4 +1,4 @@
-import threading, random, os, SocketServer, SimpleHTTPServer, setproctitle
+import threading, random, os, SocketServer, SimpleHTTPServer
 
 from logging import getLogger
 
