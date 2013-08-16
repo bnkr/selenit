@@ -12,15 +12,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             elif self.path.startswith("/test/"):
                 self._respond_test_main()
             elif self.path.startswith("/static/"):
-                # data race but eh...
-                without_static = self.path[len("/static"):]
-                full_path = os.path.join(os.getcwd(), without_static[1:])
-                if os.path.exists(full_path):
-                    self.path = without_static
-                    SimpleHTTPRequestHandler.do_GET(self)
-                else:
-                    missing = "{0!r} (from url {1!r})".format(full_path, self.path)
-                    self._error(missing, status=404)
+                self._respond_static()
             else:
                 self._error("urls must start /test/ or /static/", 404)
         except Exception as ex:
@@ -28,6 +20,17 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             # inside the log handler
             self._error("Exception.", status=500)
             raise
+
+    def _respond_static(self):
+        without_static = self.path[len("/static"):]
+        full_path = os.path.join(os.getcwd(), without_static[1:])
+        # data race but eh...
+        if os.path.exists(full_path):
+            self.path = without_static
+            SimpleHTTPRequestHandler.do_GET(self)
+        else:
+            missing = "{0!r} (from url {1!r})".format(full_path, self.path)
+            self._error(missing, status=404)
 
     def _error(self, message, status):
         why = "{0}: {1}\n".format(status, message)
