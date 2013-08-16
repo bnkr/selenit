@@ -38,6 +38,8 @@ class ReusableServer(SocketServer.TCPServer):
     """Messing about to get the port to be re-usable."""
     allow_reuse_address = True
 
+    #TODO: exceptions in request should go to logging
+
     def shutdown(self):
         """Try really hard to avoid port still in use errors.  Note that the
         function calls must be in this order!"""

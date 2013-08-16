@@ -10,12 +10,13 @@ class TestServerThreadTestCase(TestCase):
         for server in getattr(self, '_servers', []):
             server.terminate_and_join()
 
-    def _make_server(self, port=None):
+    def _make_server(self, port=None, host=None):
         if not hasattr(self, '_servers'):
             self._servers = []
 
         settings = ServerSettings().base_dir(os.path.realpath("."))
         port and settings.port(port)
+        host and settings.host(host)
         server = TestServerThread(settings)
         self._servers.append(server)
         return server
@@ -73,3 +74,7 @@ class TestServerThreadTestCase(TestCase):
         server.wait_for_start()
         self.assertTrue(server.is_alive())
         server.terminate_and_join()
+
+    def test_host_is_as_specified(self):
+        server = self._make_server(host="127.0.0.1")
+        self.assertEqual("127.0.0.1", server.host)
