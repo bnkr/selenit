@@ -4,42 +4,6 @@ Runs an HTTP server which serves up qunit unit tests.
 import argparse, SocketServer, SimpleHTTPServer, sys, signal, logging
 from servequnit.factory import ServerFactory
 
-QUNIT_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{title}</title>
-<link rel="stylesheet" href="{qunit_css}">
-<script type="text/javascript" src="/node_modules/requirejs/require.js"></script>
-<script type="text/javascript" src="{qunit_js}"></script>
-<script type="text/javascript" src="{sinon_js}"></script>
-</head>
-<body>
-    <div id="qunit"></div>
-    <div id="qunit-fixture"></div>
-    {script_tag}
-</body>
-</html>\n"""
-
-class QunitGenerator(object):
-    """Generates the main body of a qunit test."""
-    def __init__(self):
-        self._name = None
-
-    def script(self, name):
-        self._name = name
-        return self
-
-    def render(self):
-        context = {
-            'script_tag': '<script type="text/javascript" src="/js/test/{0}.js"></script>'.format(self._name),
-            'title': "Qunit Test Case",
-            'sinon_js': "/js/test/_runner/sinon-1.7.3.js",
-            'qunit_css': "http://code.jquery.com/qunit/qunit-1.12.0.css",
-            'qunit_js': "http://code.jquery.com/qunit/qunit-1.12.0.js",
-        }
-        return QUNIT_HTML.format(**context)
-
 def get_settings(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", default=8081, help="Port to run on.",

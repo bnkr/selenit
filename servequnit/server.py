@@ -85,6 +85,8 @@ class TestServerThread(threading.Thread):
         finally:
             self._initialised.set()
 
+        # TODO:
+        #   Exception in here will be lost
         self._httpd.serve_forever()
         self._log("server thread terminating")
 
