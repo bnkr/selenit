@@ -1,4 +1,4 @@
-import threading, random, os, SocketServer, SimpleHTTPServer
+import threading, random, os, SocketServer, sys
 
 from logging import getLogger
 
@@ -7,14 +7,27 @@ from servequnit.http import QunitRequestHandler
 
 class ServerSettings(object):
     """DTO to initalise the server with."""
-    def __init__(self):
+    def __init__(self, **kw):
         self._base_dir = None
         self._port = None
+        self._host = None
         self._handler_factory = QunitRequestHandler
+
+        # TODO: Not keen...
+        for name, value in kw.iteritems():
+            getattr(self, name)(value)
+
+    def handler_factory(self, factory):
+        self._handler_factory = factory
+        return self
 
     def base_dir(self, value):
         assert os.path.isabs(value)
         self._base_dir = value
+        return self
+
+    def host(self, value):
+        self._host = value
         return self
 
     def port(self, value):
@@ -39,7 +52,7 @@ class TestServerThread(threading.Thread):
     """
     def __init__(self, settings):
         self.port = settings._port or get_random_port()
-        self.host = get_external_address()
+        self.host = settings._host or get_external_address()
         self.base_dir = settings._base_dir
         self.handler_factory = settings._handler_factory
 
@@ -59,7 +72,8 @@ class TestServerThread(threading.Thread):
         try:
             wtf = "server starting at {0} (from {1})"
             self._log(wtf.format(self.url, self.base_dir))
-            os.chdir(self.base_dir)
+            if self.base_dir:
+                os.chdir(self.base_dir)
             httpd = ReusableServer((self.host, self.port), self.handler_factory)
             self._httpd = httpd
         except Exception as ex:
