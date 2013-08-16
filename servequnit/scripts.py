@@ -1,7 +1,8 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, SocketServer, SimpleHTTPServer, sys, signal
+import argparse, SocketServer, SimpleHTTPServer, sys, signal, logging
+from servequnit.factory import ServerFactory
 
 QUNIT_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -39,43 +40,6 @@ class QunitGenerator(object):
         }
         return QUNIT_HTML.format(**context)
 
-class QunitRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-    # http://stackoverflow.com/questions/268629/how-to-stop-basehttpserver-serve-forever-in-a-basehttprequesthandler-subclass
-    # http://stackoverflow.com/questions/1985197/using-simplehttpserver-for-unit-testing -- problems with address already in use
-
-    def do_GET(self):
-        """Url parsing, basically."""
-        try:
-            if self.path == "/shutdown/":
-                self._respond("Server will shut down after this request.\n")
-                # Even this doesn't seem to release the socket properly...
-                self.server.shutdown()
-            elif self.path.startswith("/test"):
-                self._respond_test_main()
-            else:
-                super(QunitRequestHandler, self).do_GET()
-        except Exception as ex:
-            # After a 500 and restart you get "address already in use".  Not
-            # sure why but this is an attempt to stop that.
-            self._respond("Error.", status=500, content_type="text/plain")
-            raise
-
-    def _respond_test_main(self):
-        """The qunit program."""
-        name = self.path.split("/test", 2)[1]
-        generator = QunitGenerator()
-        self._respond(generator.script(name).render())
-
-    def _respond(self, content, status=200, content_type='text/html'):
-        self.send_response(status)
-        self.send_header('Content-type', content_type)
-        self.end_headers()
-        self.wfile.write(content)
-
-def get_server(settings):
-    host, port = settings.host, settings.port
-    return SocketServer.ThreadingTCPServer((host, port), QunitRequestHandler)
-
 def get_settings(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", default=8081, help="Port to run on.",
@@ -87,25 +51,24 @@ def get_settings(argv):
 
     return settings
 
-def handle_interrupt(server):
-    def handler(signal, context):
-        print "Terminating due to SIGINT."
-        # TODO:
-        #   do something with server to make it shutdown properly.  Solariffic
-        #   has this kind of function somewhere.  Can't call server.shutdown as
-        #   it deadlocks.  server.socket.close will work but it's a bit messy.
-        #   Solariffic starts the server in a different thread and uses events
-        #   to trigger the shutdown which is probably a bit cleaner.  We could
-        #   also send a fake request (which would be nice anyway becuase you
-        #   could shut it down over http).
-        sys.exit(0)
-    signal.signal(signal.SIGINT, handler)
+def configure_logging(settings):
+    message_format = '%(asctime)s %(levelname)s %(name)s: %(message)s'
+    time_format = "%Y-%m-%d %H:%M:%S"
+    logging.basicConfig(level=logging.INFO, format=message_format,
+                        datefmt=time_format)
 
 def qunit_server():
     """Command-line entry point.  If your import paths are set right you can
     just call main() as the entire script."""
     settings = get_settings(sys.argv)
-    httpd = get_server(settings)
-    handle_interrupt(httpd)
-    httpd.serve_forever()
+    configure_logging(settings)
+    server = ServerFactory(port=settings.port, host=settings.host).create()
+    try:
+        # No need to thread; we just want the startup parts.
+        server.run()
+    except KeyboardInterrupt:
+        # TODO:
+        #   might need some cleanup if there are 500 errors -- that gets us the
+        #   port already in use error sometimes.
+        pass
     sys.exit(0)

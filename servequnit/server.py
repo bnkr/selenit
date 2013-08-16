@@ -70,7 +70,8 @@ class TestServerThread(threading.Thread):
         return "http://{0}:{1}/".format(self.host, self.port)
 
     def run(self):
-        "Sets up test server and loops over handling http requests."
+        """Sets up test server and loops over handling http requests.  You may
+        call this directly to get a server in the same thread."""
         try:
             wtf = "server starting at {0} (from {1})"
             self._log(wtf.format(self.url, self.base_dir))
