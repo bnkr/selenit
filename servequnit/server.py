@@ -55,7 +55,7 @@ class TestServerThread(threading.Thread):
     def __init__(self, settings):
         self.port = settings._port or get_random_port()
         self.host = settings._host or get_external_address()
-        self.base_dir = settings._base_dir
+        self.base_dir = settings._base_dir or os.getcwd()
         self.handler_factory = settings._handler_factory
 
         self._initialised = threading.Event()
@@ -73,7 +73,7 @@ class TestServerThread(threading.Thread):
         """Sets up test server and loops over handling http requests.  You may
         call this directly to get a server in the same thread."""
         try:
-            wtf = "server starting at {0} (from {1})"
+            wtf = "server starting at {0} (root {1})"
             self._log(wtf.format(self.url, self.base_dir))
             if self.base_dir:
                 os.chdir(self.base_dir)
