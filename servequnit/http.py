@@ -1,6 +1,23 @@
 import logging, os
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
+QUNIT_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="stylesheet" href="{qunit_css}">
+<script type="text/javascript" src="/node_modules/requirejs/require.js"></script>
+<script type="text/javascript" src="{qunit_js}"></script>
+<script type="text/javascript" src="{sinon_js}"></script>
+</head>
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+    {script_tag}
+</body>
+</html>\n"""
+
 class QunitRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         """Url parsing, basically."""
@@ -10,14 +27,15 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
                 # Causes an error later but does actually shut down.
                 self.server.socket.close()
             elif self.path.startswith("/test/"):
-                self._respond_test_main()
+                self._respond_test()
             elif self.path.startswith("/static/"):
                 self._respond_static()
             else:
                 self._error("urls must start /test/ or /static/", 404)
         except Exception as ex:
             # exceptions are printed in other weird ways... e.g. try raising
-            # inside the log handler
+            # inside the log handler... should be a better way to handle error
+            # docs
             self._error("Exception.", status=500)
             raise
 
@@ -31,6 +49,17 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         else:
             missing = "{0!r} (from url {1!r})".format(full_path, self.path)
             self._error(missing, status=404)
+
+    def _respond_test(self):
+        name = self.path[len("/test/"):]
+        context = {
+            'script_tag': '<script type="text/javascript" src="/js/test/{0}.js"></script>'.format(name),
+            'title': "Qunit Test Case",
+            'sinon_js': "/js/test/_runner/sinon-1.7.3.js",
+            'qunit_css': "http://code.jquery.com/qunit/qunit-1.12.0.css",
+            'qunit_js': "http://code.jquery.com/qunit/qunit-1.12.0.js",
+        }
+        self._respond(QUNIT_HTML.format(**context))
 
     def _error(self, message, status):
         why = "{0}: {1}\n".format(status, message)
@@ -52,39 +81,3 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
 
     def _log(self, message, *args, **kw):
         logging.getLogger(__name__).info(message.format(*args, **kw))
-
-QUNIT_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{title}</title>
-<link rel="stylesheet" href="{qunit_css}">
-<script type="text/javascript" src="/node_modules/requirejs/require.js"></script>
-<script type="text/javascript" src="{qunit_js}"></script>
-<script type="text/javascript" src="{sinon_js}"></script>
-</head>
-<body>
-    <div id="qunit"></div>
-    <div id="qunit-fixture"></div>
-    {script_tag}
-</body>
-</html>\n"""
-
-class QunitGenerator(object):
-    """Generates the main body of a qunit test."""
-    def __init__(self):
-        self._name = None
-
-    def script(self, name):
-        self._name = name
-        return self
-
-    def render(self):
-        context = {
-            'script_tag': '<script type="text/javascript" src="/js/test/{0}.js"></script>'.format(self._name),
-            'title': "Qunit Test Case",
-            'sinon_js': "/js/test/_runner/sinon-1.7.3.js",
-            'qunit_css': "http://code.jquery.com/qunit/qunit-1.12.0.css",
-            'qunit_js': "http://code.jquery.com/qunit/qunit-1.12.0.js",
-        }
-        return QUNIT_HTML.format(**context)

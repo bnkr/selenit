@@ -78,6 +78,3 @@ class TestServerThreadTestCase(TestCase):
     def test_host_is_as_specified(self):
         server = self._make_server(host="127.0.0.1")
         self.assertEqual("127.0.0.1", server.host)
-
-    def test_files_served_from_working_directory(self):
-        pass

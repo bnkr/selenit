@@ -64,3 +64,54 @@ class QunitRequestHandlerTestCase(TestCase):
         message = "404: '{0}' (from url '/static/pants')\n"
         message = message.format(os.path.join(os.getcwd(), "pants"))
         self.assertEquals(message, last_line)
+
+    def _get_content(self, request):
+        writes = request.files[-1].writes
+        data = writes.index("\r\n")
+        return "".join(writes[data:])
+
+    def test_runner_response_displays_html(self):
+        request = self._make_request("/test/blah.js")
+        self._make_handler(request)
+        self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+
+        document = self._get_content(request)
+
+        self.assertTrue('<html>' in document)
+        self.assertTrue('</html>' in document)
+
+        # TODO:
+        #   test it links our actual test
+
+    def test_runner_responds_404_on_missing_test(self):
+        # no point displaying the runner if there's nothing to run
+        raise "ni"
+
+    def test_unit_test_response_from_filesytem(self):
+        # server.test_root + name
+        raise "ni"
+
+    def test_default_test_used_for_root(self):
+        # /test[/]?
+        # setver.get_default_test() from cli somehow (idea is for a short cli
+        # like servequnit pants.js
+        raise "ni"
+
+    def test_404_if_no_default_test(self):
+        raise "ni"
+
+    def test_static_libraries_inserted(self):
+        # script tags
+        # server.libraries => /static/<path> src
+        # server.content => /read/<name> => read from given location
+        raise "ni"
+
+    def test_bound_content_served_from_arbitary_path(self):
+        # content actually turns up
+        # server.content => /read/<name> => read from given location
+        # also test 404 of this url type
+        raise "ni"
+
+    def test_function_mapped_to_url(self):
+        # to yield fake ajax
+        raise "ni"
