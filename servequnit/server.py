@@ -3,22 +3,14 @@ import threading, random, os, SocketServer, SimpleHTTPServer
 from logging import getLogger
 
 from servequnit.network import get_external_address, get_random_port
-
-class QunitServer(SocketServer.TCPServer):
-    """Handles requests dynamically to get qunit stuff."""
-    allow_reuse_address = True
-
-    def shutdown(self):
-        """Try really hard to avoid port still in use errors.  Note that the
-        function calls must be in this order!"""
-        self.socket.close()
-        SocketServer.TCPServer.shutdown(self)
+from servequnit.http import QunitRequestHandler
 
 class ServerSettings(object):
     """DTO to initalise the server with."""
     def __init__(self):
         self._base_dir = None
         self._port = None
+        self._handler_factory = QunitRequestHandler
 
     def base_dir(self, value):
         assert os.path.isabs(value)
@@ -29,7 +21,17 @@ class ServerSettings(object):
         self._port = int(value)
         return self
 
-class QunitServerThread(threading.Thread):
+class ReusableServer(SocketServer.TCPServer):
+    """Messing about to get the port to be re-usable."""
+    allow_reuse_address = True
+
+    def shutdown(self):
+        """Try really hard to avoid port still in use errors.  Note that the
+        function calls must be in this order!"""
+        self.socket.close()
+        SocketServer.TCPServer.shutdown(self)
+
+class TestServerThread(threading.Thread):
     """Stoppable server thread.  The purpose of this class is to synchronise the
     server and its parent thread (which could be a unit test or just a raw
     server).  The extra thread is therefore some overhead, but it's much easier
@@ -38,15 +40,12 @@ class QunitServerThread(threading.Thread):
     def __init__(self, settings):
         self.port = settings._port or get_random_port()
         self.host = get_external_address()
+        self.base_dir = settings._base_dir
+        self.handler_factory = settings._handler_factory
 
         self._initialised = threading.Event()
         self._httpd = None
         self._error = None
-
-        # might become irrelevant
-        self.base_dir = settings._base_dir
-
-        self.handler_factory = SimpleHTTPServer.SimpleHTTPRequestHandler
 
         threading.Thread.__init__(self)
 
@@ -61,7 +60,7 @@ class QunitServerThread(threading.Thread):
             wtf = "server starting at {0} (from {1})"
             self._log(wtf.format(self.url, self.base_dir))
             os.chdir(self.base_dir)
-            httpd = QunitServer((self.host, self.port), self.handler_factory)
+            httpd = ReusableServer((self.host, self.port), self.handler_factory)
             self._httpd = httpd
         except Exception as ex:
             self._error = ex

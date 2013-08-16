@@ -2,9 +2,9 @@ import urllib, os, socket
 from mock import patch
 from unittest import TestCase
 
-from servequnit.server import QunitServerThread, ServerSettings
+from servequnit.server import TestServerThread, ServerSettings
 
-class QunitServerThreadTestCase(TestCase):
+class TestServerThreadTestCase(TestCase):
     def tearDown(self):
         """Nose blocks forever without this."""
         for server in getattr(self, '_servers', []):
@@ -16,24 +16,24 @@ class QunitServerThreadTestCase(TestCase):
 
         settings = ServerSettings().base_dir(os.path.realpath("."))
         port and settings.port(port)
-        server = QunitServerThread(settings)
+        server = TestServerThread(settings)
         self._servers.append(server)
         return server
 
     def test_server_starts_thread(self):
         settings = ServerSettings().base_dir(os.path.realpath("."))
-        server = QunitServerThread(settings)
+        server = TestServerThread(settings)
         server.wait_for_start()
         self.assertTrue(server.is_alive())
         server.terminate_and_join()
         self.assertFalse(server.is_alive())
 
-    @patch('servequnit.server.QunitServer')
-    def test_error_in_startup_stops_thread(self, server_class):
+    @patch('servequnit.server.ReusableServer')
+    def test_error_in_startup_stops_thread(self, http_class):
         class IdentifiableException(Exception):
             pass
 
-        server_class.side_effect = IdentifiableException("pants")
+        http_class.side_effect = IdentifiableException("pants")
         server = self._make_server()
         self.assertRaises(IdentifiableException, server.wait_for_start)
         self.assertFalse(server.is_alive())
