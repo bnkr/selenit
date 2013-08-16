@@ -77,7 +77,7 @@ class TestServerThread(threading.Thread):
             httpd = ReusableServer((self.host, self.port), self.handler_factory)
             self._httpd = httpd
         except Exception as ex:
-            self._error = ex
+            self._error = (ex, None, sys.exc_info()[2])
             return
         finally:
             self._initialised.set()
