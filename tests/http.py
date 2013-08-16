@@ -47,3 +47,20 @@ class QunitRequestHandlerTestCase(TestCase):
         class_definition = "class self.__class__.__name__(TestCase)"
         output = request.files[-1].writes
         self.assertTrue(any((class_definition in line) for line in output))
+
+    def test_root_404_is_simple(self):
+        request = self._make_request("/asdasd")
+        self._make_handler(request)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals("404: urls must start /test/ or /static/\n", last_line)
+
+    def test_static_404_is_simple(self):
+        request = self._make_request("/static/pants")
+        self._make_handler(request)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        last_line = request.files[-1].writes[-1]
+
+        message = "404: '{0}' (from url '/static/pants')\n"
+        message = message.format(os.path.join(os.getcwd(), "pants"))
+        self.assertEquals(message, last_line)
