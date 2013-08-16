@@ -2,6 +2,7 @@
 *.sw[po]
 # Build
 *.py[co]
+.coverage
 # Buildout stuff
 bin/
 eggs/
