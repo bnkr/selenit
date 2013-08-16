@@ -36,8 +36,7 @@ class js_server(object):
     @classmethod
     def context(cls, **config):
         """For consistency with the decorate method."""
-        with cls(**config) as server:
-            function(server, *args, **kw)
+        return cls(**config)
 
     @classmethod
     def decorate(cls, **config):
