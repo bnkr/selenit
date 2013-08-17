@@ -6,7 +6,8 @@ from servequnit.network import get_external_address, get_random_port
 from servequnit.http import QunitRequestHandler
 
 class ServerSettings(object):
-    """DTO to initalise the server with."""
+    """DTO to initalise the server with.  Also decides the logic of defaults for
+    different values."""
     def __init__(self, **kw):
         self._base_dir = None
         self._port = None
@@ -34,17 +35,48 @@ class ServerSettings(object):
         self._port = int(value)
         return self
 
+class HandlerSettings(object):
+    """Mostly so we have a nice interface to pass to Mock."""
+    def __init__(self, settings):
+        self.settings = settings
+
+    def test_root(self):
+        pass
+
+    def default_test(self):
+        pass
+
+    def bound_content(self):
+        pass
+
+    def scripts(self):
+        pass
+
 class ReusableServer(SocketServer.TCPServer):
     """Messing about to get the port to be re-usable."""
     allow_reuse_address = True
 
     #TODO: exceptions in request should go to logging
 
+    def __init__(self, settings, bind, handler):
+        """For some reason we can't wrap the request handler's constructor to
+        pass settings so it has to get it from the server object."""
+        # TODO:
+        #    this might be a really trivial error... we should try again with
+        #    the factory... having the hadnler settings here is needless
+        #    coupling and would make it diffuclt for is to for example extract
+        #    the server running stuff from the threading stuff
+        SocketServer.TCPServer.__init__(self, bind, handler)
+        self.settings = settings
+
     def shutdown(self):
         """Try really hard to avoid port still in use errors.  Note that the
         function calls must be in this order!"""
         self.socket.close()
         SocketServer.TCPServer.shutdown(self)
+
+    def get_handler_settings(self):
+        return self.settings
 
 class TestServerThread(threading.Thread):
     """Stoppable server thread.  The purpose of this class is to synchronise the
@@ -53,6 +85,8 @@ class TestServerThread(threading.Thread):
     than trying to get a mono-threaded server to terminate when you tell it to!
     """
     def __init__(self, settings):
+        # TODO: this should all be done in the settings class
+        self.handler_settings = HandlerSettings(settings)
         self.port = settings._port or get_random_port()
         self.host = settings._host or get_external_address()
         self.base_dir = settings._base_dir or os.getcwd()
@@ -77,7 +111,9 @@ class TestServerThread(threading.Thread):
             self._log(wtf.format(self.url, self.base_dir))
             if self.base_dir:
                 os.chdir(self.base_dir)
-            httpd = ReusableServer((self.host, self.port), self.handler_factory)
+            httpd = ReusableServer(self.handler_settings,
+                                   (self.host, self.port),
+                                   self.handler_factory)
             self._httpd = httpd
         except Exception as ex:
             self._error = (ex, None, sys.exc_info()[2])
@@ -97,7 +133,7 @@ class TestServerThread(threading.Thread):
 
         if self._error:
             self.join()
-            raise self._error
+            raise self._error[0], self._error[1], self._error[2]
 
         self._log("server has started on {0}.".format(self.url))
 

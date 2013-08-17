@@ -1,7 +1,9 @@
 import urllib, os, contextlib
-from mock import patch
+from tempfile import NamedTemporaryFile
+from mock import patch, Mock
 from unittest import TestCase
 
+from servequnit.server import ReusableServer, HandlerSettings
 from servequnit.http import QunitRequestHandler
 from servequnit.factory import js_server
 
@@ -21,6 +23,17 @@ class QunitRequestHandlerTestCase(TestCase):
         request.queue_recv("GET {url} HTTP/1.1".format(url=url))
         return request
 
+    def _make_settings(self, test_root=None, default_test=None, read=None, scripts=[]):
+        server = Mock(spec=ReusableServer)
+        settings = Mock(spec=HandlerSettings)
+        test_root = test_root or "/tmp"
+        settings.test_root.return_value = test_root
+        settings.default_test.return_value = default_test
+        settings.bound_content.return_value = read
+        settings.scripts.return_value = scripts or []
+        server.get_handler_settings.return_value = settings
+        return server
+
     @contextlib.contextmanager
     def _in_dir(self, where):
         old = os.getcwd()
@@ -30,10 +43,24 @@ class QunitRequestHandlerTestCase(TestCase):
         finally:
             os.chdir(old)
 
-    def _make_handler(self, request):
+    def _make_handler(self, request, server=None):
         client_address = ("localhost", 42)
-        handler = QunitRequestHandler(request, client_address, server=None)
+        server = server or self._make_settings()
+        handler = QunitRequestHandler(request, client_address, server=server)
         return handler
+
+    def _get_content(self, request):
+        writes = request.files[-1].writes
+        data = writes.index("\r\n")
+        return "".join(writes[data:])
+
+    def test_root_404_lists_prefixes(self):
+        request = self._make_request("/asdasd")
+        handler = self._make_handler(request)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        last_line = request.files[-1].writes[-1]
+        paths = [path for (path, _) in handler.get_handlers()]
+        message = "404: '/asdasd': prefix must be one of {0!r}\n".format(paths)
 
     def test_static_response_serves_from_pwd(self):
         basename = os.path.basename(__file__)
@@ -48,70 +75,149 @@ class QunitRequestHandlerTestCase(TestCase):
         output = request.files[-1].writes
         self.assertTrue(any((class_definition in line) for line in output))
 
-    def test_root_404_is_simple(self):
-        request = self._make_request("/asdasd")
-        self._make_handler(request)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
-        last_line = request.files[-1].writes[-1]
-        self.assertEquals("404: urls must start /test/ or /static/\n", last_line)
+    def test_static_respnds_404_when_file_missing(self):
+        assert not os.path.exists("pants")
 
-    def test_static_404_is_simple(self):
         request = self._make_request("/static/pants")
         self._make_handler(request)
         self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
         last_line = request.files[-1].writes[-1]
 
-        message = "404: '{0}' (from url '/static/pants')\n"
-        message = message.format(os.path.join(os.getcwd(), "pants"))
-        self.assertEquals(message, last_line)
-
-    def _get_content(self, request):
-        writes = request.files[-1].writes
-        data = writes.index("\r\n")
-        return "".join(writes[data:])
+        message = "404: '/static/pants' (maps to '{0}'): does not exist\n"
+        fs_name = os.path.join(os.getcwd(), "pants")
+        self.assertEquals(message.format(fs_name), last_line)
 
     def test_runner_response_displays_html(self):
+        with NamedTemporaryFile() as io:
+            io.write("summat")
+            io.flush()
+
+            settings = self._make_settings(test_root=os.path.dirname(io.name))
+            request = self._make_request("/test/{0}".format(os.path.basename(io.name)))
+            self._make_handler(request, settings)
+            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+
+            document = self._get_content(request)
+
+            self.assertTrue('<html' in document)
+            self.assertTrue('src="/unit/{0}"'.format(os.path.basename(io.name))
+                            in document)
+            self.assertTrue('</html>' in document)
+
+    def test_runner_reponds_404_if_test_case_missing(self):
         request = self._make_request("/test/blah.js")
-        self._make_handler(request)
-        self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+        settings = self._make_settings(test_root="/tmp/")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
 
-        document = self._get_content(request)
+        message = "404: '/test/blah.js': test case '/unit/blah.js' (maps to " \
+                  "'/tmp/blah.js'): does not exist\n"
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals(message, last_line)
 
-        self.assertTrue('<html>' in document)
-        self.assertTrue('</html>' in document)
+    def test_runner_inserts_libraries(self):
+        with NamedTemporaryFile() as io:
+            io.write("summat")
+            io.flush()
+            request = self._make_request("/test/")
+            settings = self._make_settings(scripts=["/static/a", '/blah/b'],
+                                           default_test=io.name)
+            self._make_handler(request, settings)
 
-        # TODO:
-        #   test it links our actual test
+            document = self._get_content(request)
+            self.assertTrue('src="/static/a"'.format(io.name) in document)
+            self.assertTrue('src="/blah/b"'.format(io.name) in document)
 
-    def test_runner_responds_404_on_missing_test(self):
-        # no point displaying the runner if there's nothing to run
-        raise "ni"
-
-    def test_unit_test_response_from_filesytem(self):
-        # server.test_root + name
-        raise "ni"
+    def test_runner_reponds_404_if_default_test_missing(self):
+        request = self._make_request("/test/")
+        settings = self._make_settings(default_test="/does-not-exist")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
 
     def test_default_test_used_for_root(self):
-        # /test[/]?
-        # setver.get_default_test() from cli somehow (idea is for a short cli
-        # like servequnit pants.js
-        raise "ni"
+        with NamedTemporaryFile() as io:
+            io.write("summat")
+            io.flush()
+
+            settings = self._make_settings(default_test=io.name)
+            request = self._make_request("/test/")
+            self._make_handler(request, settings)
+            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+
+            document = self._get_content(request)
+
+            self.assertTrue('src="/default-case/{0}"'.format(io.name) in document)
+
+            request = self._make_request("/default-case/arbitrary")
+            self._make_handler(request, settings)
+            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+            self.assertEqual("summat", request.files[-1].writes[-1])
+
+    def test_404_if_missing_default_case(self):
+        settings = self._make_settings(default_test="/tmp.blah")
+        request = self._make_request("/default-case/arbitrary")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        message = "404: '/default-case/arbitrary' (maps to '/tmp.blah'): " \
+                  "does not exist\n"
+        self.assertEqual(message, request.files[-1].writes[-1])
 
     def test_404_if_no_default_test(self):
-        raise "ni"
+        settings = self._make_settings(default_test=None)
+        request = self._make_request("/default-case/")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        message = "404: '/default-case/': no default case configured\n"
+        self.assertEqual(message, request.files[-1].writes[-1])
 
-    def test_static_libraries_inserted(self):
-        # script tags
-        # server.libraries => /static/<path> src
-        # server.content => /read/<name> => read from given location
-        raise "ni"
+    def test_unit_test_js_responds_404_on_missing_test(self):
+        request = self._make_request("/unit/blah.js")
+        settings = self._make_settings(test_root="/tmp/")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+
+        message = "404: '/unit/blah.js' (maps to '/tmp/blah.js'): does not exist\n"
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals(message, last_line)
+
+    def test_unit_test_response_from_filesytem(self):
+        with NamedTemporaryFile() as io:
+            io.write("some stuff\n")
+            io.flush()
+
+            request = self._make_request("/unit/" + os.path.basename(io.name))
+            settings = self._make_settings(test_root=os.path.dirname(io.name))
+            self._make_handler(request, settings)
+
+            last_line = request.files[-1].writes[-1]
+            self.assertEquals("some stuff\n", last_line)
 
     def test_bound_content_served_from_arbitary_path(self):
-        # content actually turns up
-        # server.content => /read/<name> => read from given location
-        # also test 404 of this url type
-        raise "ni"
+        with NamedTemporaryFile() as io:
+            io.write("some stuff\n")
+            io.flush()
 
-    def test_function_mapped_to_url(self):
-        # to yield fake ajax
-        raise "ni"
+            request = self._make_request("/read/pants")
+            settings = self._make_settings(read=[('pants', io.name)])
+            self._make_handler(request, settings)
+
+            last_line = request.files[-1].writes[-1]
+            self.assertEquals("some stuff\n", last_line)
+
+    def test_bound_is_404_for_non_existing_path(self):
+        request = self._make_request("/read/pants")
+        settings = self._make_settings(read=[('pants', "/tmp.asdhasdas")])
+        self._make_handler(request, settings)
+
+        message = "404: '/read/pants' (maps to '/tmp.asdhasdas'): does not exist\n"
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals(message, last_line)
+
+    def test_bound_is_404_for_non_existing_name(self):
+        request = self._make_request("/read/pants")
+        settings = self._make_settings()
+        self._make_handler(request, settings)
+
+        message = "404: '/read/pants': no file bound for 'pants'\n"
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals(message, last_line)

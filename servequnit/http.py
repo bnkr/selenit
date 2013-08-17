@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, re, posixpath, urllib, errno
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 QUNIT_HTML = """<!DOCTYPE html>
@@ -7,9 +7,8 @@ QUNIT_HTML = """<!DOCTYPE html>
 <meta charset="utf-8">
 <title>{title}</title>
 <link rel="stylesheet" href="{qunit_css}">
-<script type="text/javascript" src="/node_modules/requirejs/require.js"></script>
 <script type="text/javascript" src="{qunit_js}"></script>
-<script type="text/javascript" src="{sinon_js}"></script>
+{head}
 </head>
 <body>
     <div id="qunit"></div>
@@ -19,57 +18,169 @@ QUNIT_HTML = """<!DOCTYPE html>
 </html>\n"""
 
 class QunitRequestHandler(SimpleHTTPRequestHandler):
+    def _get_settings(self):
+        """For some reason we can't store this in the constructor."""
+        return self.server.get_handler_settings()
+
+    def get_handlers(self):
+        return (
+            ('/shutdown/', self._respond_stop,),
+            ('/test/', self._respond_runner,),
+            ('/static/', self._respond_static,),
+            ('/unit/', self._respond_unit,),
+            ('/default-case/', self._respond_default_case,),
+            ('/read/', self._respond_read,),
+        )
+
     def do_GET(self):
         """Url parsing, basically."""
-        try:
-            if self.path == "/shutdown/":
-                self._respond("Server will shut down after this request.\n")
-                # Causes an error later but does actually shut down.
-                self.server.socket.close()
-            elif self.path.startswith("/test/"):
-                self._respond_test()
-            elif self.path.startswith("/static/"):
-                self._respond_static()
-            else:
-                self._error("urls must start /test/ or /static/", 404)
-        except Exception as ex:
-            # exceptions are printed in other weird ways... e.g. try raising
-            # inside the log handler... should be a better way to handle error
-            # docs
-            self._error("Exception.", status=500)
-            raise
+        prefix_handlers = self.get_handlers()
+        for prefix, handler in prefix_handlers:
+            if self.path.startswith(prefix):
+                handler()
+                return
+
+        allowed_paths = [prefix for (prefix, _) in prefix_handlers]
+        error = "prefix must be one of {0!r}".format(allowed_paths)
+        self._respond_404(error)
+
+    def _respond_read(self):
+        content = self._get_settings().bound_content() or []
+        suffix = self.path[len("/read/"):]
+        for url, path in content:
+            if url == suffix:
+                self._cat_file(path)
+                return
+
+        self._respond_404("no file bound for {0!r}".format(suffix))
 
     def _respond_static(self):
-        without_static = self.path[len("/static"):]
-        full_path = os.path.join(os.getcwd(), without_static[1:])
-        # data race but eh...
-        if os.path.exists(full_path):
-            self.path = without_static
-            SimpleHTTPRequestHandler.do_GET(self)
-        else:
-            missing = "{0!r} (from url {1!r})".format(full_path, self.path)
-            self._error(missing, status=404)
+        settings = self._get_settings()
+        self._respond_from_filesystem(relative_to=os.getcwd(),
+                                      prefix="/static/")
 
-    def _respond_test(self):
-        name = self.path[len("/test/"):]
+    def _respond_unit(self):
+        settings = self._get_settings()
+        self._respond_from_filesystem(relative_to=settings.test_root(),
+                                      prefix="/unit/")
+
+    def _respond_default_case(self):
+        default = self._get_settings().default_test()
+        if default:
+            self._cat_file(default)
+        else:
+            self._respond_404("no default case configured")
+
+    def _respond_stop(self):
+        self._respond("Server will shut down after this request.\n")
+        # Causes an error later but does actually shut down.
+        self.server.socket.close()
+
+    def _respond_runner(self):
+        settings = self._get_settings()
+        # TODO:
+        #   append .js if none already -- ideally we visit test/case-name so
+        #   it's clear it's html
+        test_name = self.path[len("/test/"):]
+        if test_name:
+            case = "/unit/{0}".format(test_name)
+            local = self._get_local_path(path=case, prefix="/unit/",
+                                         relative_to=settings.test_root(),)
+            if not os.path.exists(local):
+                message = "test case {1!r} (maps to {0!r}): does not exist"
+                self._respond_404(message.format(local, case))
+                return
+        else:
+            default = self._get_settings().default_test()
+            if not settings.default_test():
+                self._respond_404("no default test configured")
+                return
+            elif not os.path.exists(default):
+                self._respond_404("default test {0!r} does not exist".format(default))
+                return
+
+            case = "/default-case/{0}".format(default)
+
+        tags = ['<script type="text/javascript" src="{0}"></script>'.format(name)
+                for name in self._get_settings().scripts()]
+
         context = {
-            'script_tag': '<script type="text/javascript" src="/js/test/{0}.js"></script>'.format(name),
+            'script_tag': '<script type="text/javascript" src="{0}"></script>'.format(case),
             'title': "Qunit Test Case",
-            'sinon_js': "/js/test/_runner/sinon-1.7.3.js",
             'qunit_css': "http://code.jquery.com/qunit/qunit-1.12.0.css",
             'qunit_js': "http://code.jquery.com/qunit/qunit-1.12.0.js",
+            'head': "\n".join(tags),
         }
         self._respond(QUNIT_HTML.format(**context))
 
-    def _error(self, message, status):
+    def _respond_from_filesystem(self, prefix, relative_to):
+        local = self._get_local_path(path=self.path, prefix=prefix,
+                                     relative_to=relative_to)
+        self._cat_file(local)
+
+    def _respond_error(self, message, status):
         why = "{0}: {1}\n".format(status, message)
         self._respond(why, status=status, content_type="text/plain")
+
+    def _respond_404(self, why, translated_path=None):
+        message = "{0!r}".format(self.path)
+        if translated_path:
+            message += " (maps to {0!r}): ".format(translated_path)
+        else:
+            message += ": "
+        message += "{0}".format(why)
+        self._respond_error(message, status=404)
 
     def _respond(self, content, status=200, content_type='text/html'):
         self.send_response(status)
         self.send_header('Content-type', content_type)
         self.end_headers()
         self.wfile.write(content)
+
+    def _get_local_path(self, path, relative_to, prefix=None):
+        """Map a url onto some base directory."""
+        if prefix:
+            path = path[len(prefix):]
+        path = path.split('?',1)[0]
+        path = path.split('#',1)[0]
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
+        words = filter(None, words)
+        path = relative_to
+        for word in words:
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir): continue
+            path = os.path.join(path, word)
+        return path
+
+    def _cat_file(self, path):
+        if os.path.isdir(path):
+            self._respond_404("is a directory", path)
+            return
+
+        try:
+            # Always read in binary mode. Opening files in text mode may cause
+            # newline translations, making the actual size of the content
+            # transmitted *less* than the content-length!
+            io = open(path, 'rb')
+        except IOError as ex:
+            if ex.errno == errno.ENOENT:
+                self._respond_404("does not exist", path)
+            else:
+                self._respond_404(str(ex), path)
+            return None
+
+        try:
+            self.send_response(200)
+            self.send_header("Content-type", self.guess_type(path))
+            stat = os.fstat(io.fileno())
+            self.send_header("Content-Length", str(stat[6]))
+            self.send_header("Last-Modified", self.date_time_string(stat.st_mtime))
+            self.end_headers()
+            self.copyfile(io, self.wfile)
+        finally:
+            io.close()
 
     def log_error(self, format, status, description):
         """We're already sending all requests to the log so no need to do
