@@ -3,6 +3,9 @@
 # Build
 *.py[co]
 .coverage
+# setup
+dist/
+MANIFEST
 # Buildout stuff
 bin/
 eggs/
