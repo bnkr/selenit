@@ -1,8 +1,44 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, SocketServer, SimpleHTTPServer, sys, signal, logging
-from servequnit.factory import ServerFactory
+import argparse, sys, logging
+from servequnit.seleniumtest import QunitSeleniumTester
+from servequnit.factory import js_server, ServerFactory
+
+class CliCommand(object):
+    def __init__(self, settings):
+        self.settings = settings
+
+    def get_server_config(self):
+        """Turn settings into parameters for factory'ing a server."""
+        config = dict(
+            port=self.settings.port,
+            host=self.settings.host,
+        )
+        return config
+
+class SeleniumCommand(CliCommand):
+    def get_tester_config(self, server):
+        return dict()
+
+    def run(self):
+        server_config = self.get_server_config()
+        with js_server.context(**server_config) as server:
+            tester_config = self.get_tester_config(server)
+            test = QunitSeleniumTester(**tester_config)
+            test.run()
+
+        return 0
+
+class ServerCommand(CliCommand):
+    def run(self):
+        config = self.get_server_config()
+        server = ServerFactory(**config).create()
+        try:
+            # No need to thread; we just want the startup parts.
+            server.run()
+        except KeyboardInterrupt:
+            pass
 
 def get_settings(argv):
     parser = argparse.ArgumentParser()
@@ -10,6 +46,10 @@ def get_settings(argv):
                         type=int,)
     parser.add_argument("-H", "--host", default="localhost",
                         help="Host to listen on (default localhost).")
+    parser.add_argument("-w", "--webdriver", default="http://127.0.0.1:4444/wd/hub",
+                        help="Location of your webdriver HTTP endpoint.")
+    parser.add_argument("-s", "--selenium", action="store_true", default=False,
+                        help="Run tests with selenium and exit.")
 
     settings = parser.parse_args(argv[1:])
 
@@ -21,18 +61,15 @@ def configure_logging(settings):
     logging.basicConfig(level=logging.INFO, format=message_format,
                         datefmt=time_format)
 
-def qunit_server():
+def servequnit_main():
     """Command-line entry point.  If your import paths are set right you can
     just call main() as the entire script."""
     settings = get_settings(sys.argv)
     configure_logging(settings)
-    server = ServerFactory(port=settings.port, host=settings.host).create()
-    try:
-        # No need to thread; we just want the startup parts.
-        server.run()
-    except KeyboardInterrupt:
-        # TODO:
-        #   might need some cleanup if there are 500 errors -- that gets us the
-        #   port already in use error sometimes.
-        pass
-    sys.exit(0)
+
+    if settings.selenium:
+        command = SeleniumCommand(settings)
+    else:
+        command = ServerCommand(settings)
+
+    sys.exit(command.run())
