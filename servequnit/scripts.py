@@ -22,19 +22,25 @@ class SeleniumCommand(CliCommand):
         return dict()
 
     def run(self):
-        server_config = self.get_server_config()
-        with js_server.context(**server_config) as server:
-            tester_config = self.get_tester_config(server)
-            test = QunitSeleniumTester(**tester_config)
-            test.run()
+        try:
+            server_config = self.get_server_config()
+            with js_server.context(**server_config) as server:
+                tester_config = self.get_tester_config(server)
+                test = QunitSeleniumTester(**tester_config)
+                test.run()
+        except KeyboardInterrupt:
+            pass
 
         return 0
 
 class BrowserCommand(CliCommand):
     def run(self):
-        server_config = self.get_server_config()
-        with js_server.context(**server_config) as server:
-            subprocess.call(['firefox', server.url + "default-case/"])
+        try:
+            server_config = self.get_server_config()
+            with js_server.context(**server_config) as server:
+                subprocess.call(['firefox', server.url + "default-case/"])
+        except KeyboardInterrupt:
+            pass
 
         return 0
 
@@ -42,8 +48,8 @@ class ServerCommand(CliCommand):
     def run(self):
         config = self.get_server_config()
         server = ServerFactory(**config).create()
+        # No need to thread; we just want the startup parts.
         try:
-            # No need to thread; we just want the startup parts.
             server.run()
         except KeyboardInterrupt:
             pass
@@ -61,6 +67,7 @@ def get_settings(argv):
                         help="Run tests with selenium and exit.")
     parser.add_argument("-b", "--browser", action="store_true", default=False,
                         help="Run tests with a web browser.")
+    parser.add_argument("files", help="Stuff to source in the test file (css or js).")
 
     settings = parser.parse_args(argv[1:])
 
