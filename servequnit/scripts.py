@@ -1,7 +1,7 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, sys, logging
+import argparse, sys, logging, subprocess
 from servequnit.seleniumtest import QunitSeleniumTester
 from servequnit.factory import js_server, ServerFactory
 
@@ -30,6 +30,14 @@ class SeleniumCommand(CliCommand):
 
         return 0
 
+class BrowserCommand(CliCommand):
+    def run(self):
+        server_config = self.get_server_config()
+        with js_server.context(**server_config) as server:
+            subprocess.call(['firefox', server.url + "default-case/"])
+
+        return 0
+
 class ServerCommand(CliCommand):
     def run(self):
         config = self.get_server_config()
@@ -39,6 +47,7 @@ class ServerCommand(CliCommand):
             server.run()
         except KeyboardInterrupt:
             pass
+        return 0
 
 def get_settings(argv):
     parser = argparse.ArgumentParser()
@@ -50,6 +59,8 @@ def get_settings(argv):
                         help="Location of your webdriver HTTP endpoint.")
     parser.add_argument("-s", "--selenium", action="store_true", default=False,
                         help="Run tests with selenium and exit.")
+    parser.add_argument("-b", "--browser", action="store_true", default=False,
+                        help="Run tests with a web browser.")
 
     settings = parser.parse_args(argv[1:])
 
@@ -69,6 +80,8 @@ def servequnit_main():
 
     if settings.selenium:
         command = SeleniumCommand(settings)
+    elif settings.browser:
+        command = BrowserCommand(settings)
     else:
         command = ServerCommand(settings)
 
