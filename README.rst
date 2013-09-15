@@ -48,9 +48,22 @@ Map a url onto an arbitrary file::
     --read pants=test.js \
     --lib /read/pants
 
-Run tests with selenium::
+Selenium Usage
+--------------
 
-  $ servequnit --webdriver http://localhost:9092 test1.js test2.js
+Get seleium and its dependencies::
+
+  $ wget http://selenium.googlecode.com/files/selenium-server-standalone-2.35.0.jar
+  # aptitude install -y default-jre-headless
+  $ java -jar selenium-server-standalone-2.35.0.jar
+
+Xvfb is useful for automating tests without having browsers pop up::
+
+  $ DISPLAY=:1 xvfb-run java -jar selenium-server-standalone-2.35.0.jar
+
+Execute the test::
+
+  $ servequnit --webdriver http://127.0.0.1:4444/wd/hub test1.js test2.js
 
 Server Library Usage
 --------------------
@@ -96,6 +109,21 @@ Which is an alias for::
       tester.run()
 
 So you can use the selenium tester against static content if you want.
+
+Related Stuff
+-------------
+
+grunt-qunit-phantomjs
+~~~~~~~~~~~~~~~~~~~~~
+
+With Grunt you can run qunit tests without selenium (or any kind of server) at
+all.  It uses a phantom browser.
+
+PyVirtualDisplay
+~~~~~~~~~~~~~~~~
+
+Wraps xvfb.  Can be useful for creating displays of different resolution on the
+fly.
 
 Developing and Installing
 -------------------------
