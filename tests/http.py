@@ -23,7 +23,8 @@ class QunitRequestHandlerTestCase(TestCase):
         request.queue_recv("GET {url} HTTP/1.1".format(url=url))
         return request
 
-    def _make_settings(self, test_root=None, default_test=None, read=None, scripts=[]):
+    def _make_settings(self, test_root=None, default_test=None, read=None,
+                       scripts=None, styles=None):
         # TODO:
         #   Use a real server settings object.  It's simple enough that there's
         #   really not need to mock it.
@@ -34,6 +35,7 @@ class QunitRequestHandlerTestCase(TestCase):
         settings.default_test.return_value = default_test
         settings.bound_content.return_value = read
         settings.scripts.return_value = scripts or []
+        settings.styles.return_value = styles or []
         server.get_handler_settings.return_value = settings
         return server
 
@@ -138,6 +140,15 @@ class QunitRequestHandlerTestCase(TestCase):
             document = self._get_content(request)
             self.assertTrue('src="/static/a"'.format(io.name) in document)
             self.assertTrue('src="/blah/b"'.format(io.name) in document)
+
+    def test_runner_inserts_styles(self):
+        request = self._make_request("/oneshot/")
+        settings = self._make_settings(styles=['/arbitrary_stuff/here'],)
+        self._make_handler(request, settings)
+        html = '<link rel="stylesheet" type="text/css" ' \
+               'href="/arbitrary_stuff/here">'
+        content = "".join(request.files[-1].writes)
+        self.assertTrue(html in content)
 
     def test_oneshot_runner_inserts_libraries(self):
         request = self._make_request("/oneshot/")

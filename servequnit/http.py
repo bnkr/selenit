@@ -144,11 +144,13 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             return '<link rel="stylesheet" type="text/css" href="{0}">'.format(source)
 
         # TODO:
-        #   Check that these scripts actually exist.
+        #   Would be nice to check that these things will actually return a
+        #   response...
         scripts = \
             ["http://code.jquery.com/qunit/qunit-1.12.0.js"] + \
             self._get_settings().scripts() + extra_scripts
-        css = ["http://code.jquery.com/qunit/qunit-1.12.0.css"]
+        css = ["http://code.jquery.com/qunit/qunit-1.12.0.css"] + \
+               self._get_settings().styles()
 
         tags = [link_js(name) for name in scripts]
         tags += [link_css(name) for name in css]

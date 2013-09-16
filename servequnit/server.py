@@ -18,6 +18,7 @@ class ServerSettings(object):
         self._handler_factory = QunitRequestHandler
         self._bind = {}
         self._scripts = []
+        self._styles = []
 
         # TODO: Not keen...
         for name, value in kw.iteritems():
@@ -46,8 +47,13 @@ class ServerSettings(object):
         return self
 
     def script(self, url):
-        """Put this script tag in each."""
+        """Put this script tag in each test."""
         self._scripts.append(url)
+        return self
+
+    def style(self, url):
+        """Put this style tag in each test."""
+        self._styles.append(url)
         return self
 
     def bind(self, name, path):
@@ -62,6 +68,12 @@ class ServerSettings(object):
         """Shortcut."""
         self.bind(name, path)
         self.script(urlparse.urljoin("/read/", name))
+        return self
+
+    def bind_style(self, name, path):
+        """Shortcut."""
+        self.bind(name, path)
+        self.style(urlparse.urljoin("/read/", name))
         return self
 
 class HandlerSettings(object):
@@ -82,6 +94,9 @@ class HandlerSettings(object):
 
     def bound_content(self):
         return list(self.settings._bind.iteritems())
+
+    def styles(self):
+        return self.settings._styles
 
     def scripts(self):
         return self.settings._scripts
