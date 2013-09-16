@@ -107,6 +107,14 @@ class QunitRequestHandlerTestCase(TestCase):
                             in document)
             self.assertTrue('</html>' in document)
 
+    def test_runner_handles_no_test(self):
+        settings = self._make_settings(test_root=None)
+        settings.get_handler_settings.return_value.test_root.return_value = None
+        request = self._make_request("/test/test/data/passes.js")
+        self._make_handler(request, settings)
+        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertTrue("no test root" in request.files[-1].writes[-1])
+
     def test_runner_reponds_404_if_test_case_missing(self):
         request = self._make_request("/test/blah.js")
         settings = self._make_settings(test_root="/tmp/")

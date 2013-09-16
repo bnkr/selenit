@@ -108,6 +108,9 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         test_name = self.path[len("/test/"):]
         if test_name:
             case = "/unit/{0}".format(test_name)
+            if not settings.test_root():
+                self._respond_404("no test root to serve named test from")
+                return
             local = self._get_local_path(path=case, prefix="/unit/",
                                          relative_to=settings.test_root(),)
             if not os.path.exists(local):

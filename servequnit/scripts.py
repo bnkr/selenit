@@ -70,7 +70,7 @@ def get_settings(argv):
                         help="Run tests with selenium and exit.")
     parser.add_argument("-b", "--browser", action="store_true", default=False,
                         help="Run tests with a web browser.")
-    parser.add_argument("files", help="Stuff to source in the test file (css or js).")
+    parser.add_argument("files", help="Stuff to source in the test file (css or js).", nargs="?")
 
     settings = parser.parse_args(argv[1:])
 
