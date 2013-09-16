@@ -12,17 +12,21 @@ class QunitSeleniumTesterTestCase(TestCase):
         return tester
 
     def test_passing_test_passes(self):
-        passing = os.path.join(os.path.dirname(__file__), "data", "passes.js")
-        factory = ServerFactory()
-        factory.bind_script("test", passing)
+        test_file = os.path.join(os.path.dirname(__file__), "data", "passes.js")
+        factory = ServerFactory().bind_script("test", test_file)
         with factory.run() as server:
             tester = self._make_tester(server)
             tester.run()
 
     def test_failing_test_reports_failure(self):
-        passing = os.path.join(os.path.dirname(__file__), "data", "fails.js")
-        factory = ServerFactory()
-        factory.bind_script("test", passing)
+        test_file = os.path.join(os.path.dirname(__file__), "data", "fails.js")
+        factory = ServerFactory().bind_script("test", test_file)
+        with factory.run() as server:
+            tester = self._make_tester(server)
+            self.assertRaises(TestFailedError, tester.run)
+
+    def test_failing_test_reports_no_tests(self):
+        factory = ServerFactory().bind_script("test", "/dev/null")
         with factory.run() as server:
             tester = self._make_tester(server)
             self.assertRaises(TestFailedError, tester.run)
