@@ -9,6 +9,11 @@ class ServerFactory(ServerSettings):
 
     @contextlib.contextmanager
     def run(self):
+        with self.server_context() as server:
+            yield server
+
+    @contextlib.contextmanager
+    def server_context(self):
         server = self.create()
         try:
             server.wait_for_start()

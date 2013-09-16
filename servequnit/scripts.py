@@ -3,14 +3,14 @@ Runs an HTTP server which serves up qunit unit tests.
 """
 import argparse, sys, logging, subprocess, os
 from servequnit.tester import QunitSeleniumTester
-from servequnit.factory import js_server, ServerFactory
+from servequnit.factory import ServerFactory
 
 class CliCommand(object):
     """Command pattern converts cli settings into an operation to run."""
     def __init__(self, settings):
         self.settings = settings
 
-    def get_server_config(self):
+    def get_server_factory(self):
         """Turn settings into parameters for factory'ing a server."""
         config = dict(
             port=self.settings.port,
@@ -18,7 +18,26 @@ class CliCommand(object):
             test_dir=self.settings.root,
             base_dir=self.settings.doc_root,
         )
-        return config
+
+        factory = ServerFactory(**config)
+
+        # TODO:
+        #   Present existence errors better.
+
+        for name in (self.settings.files or []):
+            if '=' in name:
+                ident, location = name.split("=")
+                if location.endswith(".css"):
+                    factory.bind_style(ident, location)
+                else:
+                    factory.bind_script(ident, location)
+            else:
+                if name.endswith(".css"):
+                    factory.style(name)
+                else:
+                    factory.script(name)
+
+        return factory
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
@@ -27,8 +46,8 @@ class SeleniumCommand(CliCommand):
 
     def run(self):
         try:
-            server_config = self.get_server_config()
-            with js_server.context(**server_config) as server:
+            factory = self.get_server_factory()
+            with factory.server_context() as server:
                 tester_config = self.get_tester_config(server)
                 test = QunitSeleniumTester(**tester_config)
                 test.run()
@@ -40,8 +59,8 @@ class SeleniumCommand(CliCommand):
 class BrowserCommand(CliCommand):
     def run(self):
         try:
-            server_config = self.get_server_config()
-            with js_server.context(**server_config) as server:
+            factory = self.get_server_factory()
+            with factory.server_context() as server:
                 # could be a tester.BrowserTester?
                 subprocess.call(['firefox', server.url + "default-case/"])
         except KeyboardInterrupt:
@@ -51,8 +70,8 @@ class BrowserCommand(CliCommand):
 
 class ServerCommand(CliCommand):
     def run(self):
-        config = self.get_server_config()
-        server = ServerFactory(**config).create()
+        factory = self.get_server_factory()
+        server = factory.create()
         # No need to thread; we just want the startup parts.
         try:
             server.run()
@@ -76,7 +95,7 @@ def get_settings(argv):
                         help="Root for test /unit files (js test files).")
     parser.add_argument("-d", "--doc-root", default=os.getcwd(),
                         help="Root for test /static files.")
-    parser.add_argument("files", nargs="?",
+    parser.add_argument("files", nargs="?", action="append",
                         help="Stuff to source in the test file (css or js).", )
 
     settings = parser.parse_args(argv[1:])

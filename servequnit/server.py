@@ -5,6 +5,9 @@ from logging import getLogger
 from servequnit.network import get_external_address, get_random_port
 from servequnit.http import QunitRequestHandler
 
+class SettingsError(Exception):
+    pass
+
 class ServerSettings(object):
     """DTO to initalise the server with.  Also decides the logic of defaults for
     different values."""
@@ -44,25 +47,30 @@ class ServerSettings(object):
 
     def script(self, url):
         """Put this script tag in each."""
-        # TODO: needs test
         self._scripts.append(url)
         return self
 
     def bind(self, name, path):
         """Bind a url to a filesystem path."""
-        # TODO: needs test
-        assert os.path.exists(path)
+        if not os.path.exists(path):
+            why = "path in bind {0!r} does not exist: {1!r}"
+            raise SettingsError(why.format(name, path))
         self._bind[name] = path
         return self
 
     def bind_script(self, name, path):
-        # TODO: needs test
+        """Shortcut."""
         self.bind(name, path)
         self.script(urlparse.urljoin("/read/", name))
         return self
 
 class HandlerSettings(object):
     """Mostly so we have a nice interface to pass to Mock."""
+
+    # TODO:
+    #   Not that useful as an abstraction.  We should just pass the
+    #   serversettings object about.
+
     def __init__(self, settings):
         self.settings = settings
 
