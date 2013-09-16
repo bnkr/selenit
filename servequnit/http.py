@@ -118,6 +118,9 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
                 self._respond_404(message.format(local, case))
                 return
         else:
+            # TODO:
+            #   This functionality is a bit rubbish.  Just do the oneshot
+            #   response here.
             default = self._get_settings().default_test()
             if not settings.default_test():
                 self._respond_404("no default test configured")
@@ -140,6 +143,8 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         def link_css(source):
             return '<link rel="stylesheet" type="text/css" href="{0}">'.format(source)
 
+        # TODO:
+        #   Check that these scripts actually exist.
         scripts = \
             ["http://code.jquery.com/qunit/qunit-1.12.0.js"] + \
             self._get_settings().scripts() + extra_scripts
