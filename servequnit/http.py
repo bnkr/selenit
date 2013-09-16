@@ -27,12 +27,10 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
 
     Api:
 
-    * /test/ -- the default test if configured; tries to fail early.
-    * /test/path -- test which maps from the given path.
-    * /oneshot/ -- like /test/ but doesn't output errors if there's no default
-      test.  This can be used if you put all the test cases as head scripts.
+    * /test/ -- a test runner with all the css and scripts.
+    * /test/path -- as above which also adds a js file from the test root (using
+      the /unit thing).
     * /read/ -- output data bound from a filesystem path.
-    * /default-case/ -- used by /test/.
     * /unit/ -- test js.
     * /static/ -- arbitrary file which comes from the doc root.
     """
@@ -45,10 +43,8 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         return (
             ('/shutdown/', self._respond_stop,),
             ('/test/', self._respond_test,),
-            ('/oneshot/', self._respond_oneshot,),
             ('/static/', self._respond_static,),
             ('/unit/', self._respond_unit,),
-            ('/default-case/', self._respond_default_case,),
             ('/read/', self._respond_read,),
         )
 
@@ -96,42 +92,37 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         # Causes an error later but does actually shut down.
         self.server.socket.close()
 
-    def _respond_oneshot(self):
-        """Respond with a runner which only has the scripts in it."""
-        self._respond_runner()
-
     def _respond_test(self):
+        """Respond with the test runner containing all scripts and css
+        specified, plus an additional link to the test case if the url specifies
+        one."""
+        scripts = self._get_test_scripts()
+        if scripts is None:
+            return
+        self._respond_runner(scripts)
+
+    def _get_test_scripts(self):
         settings = self._get_settings()
-        # TODO:
-        #   append .js if none already -- ideally we visit test/case-name so
-        #   it's clear it's html
         test_name = self.path[len("/test/"):]
         if test_name:
             case = "/unit/{0}".format(test_name)
             if not settings.test_root():
                 self._respond_404("no test root to serve named test from")
-                return
+                return None
+
+            # TODO:
+            #   append .js if none already -- ideally we visit test/case-name so
+            #   it's clear it's html
             local = self._get_local_path(path=case, prefix="/unit/",
                                          relative_to=settings.test_root(),)
             if not os.path.exists(local):
                 message = "test case {1!r} (maps to {0!r}): does not exist"
                 self._respond_404(message.format(local, case))
-                return
+                return None
+
+            return [case]
         else:
-            # TODO:
-            #   This functionality is a bit rubbish.  Just do the oneshot
-            #   response here.
-            default = self._get_settings().default_test()
-            if not settings.default_test():
-                self._respond_404("no default test configured")
-                return
-            elif not os.path.exists(default):
-                self._respond_404("default test {0!r} does not exist".format(default))
-                return
-
-            case = "/default-case/{0}".format(default)
-
-        self._respond_runner([case])
+            return []
 
     def _respond_runner(self, extra_scripts=None):
         """A runner with some scripts in it."""

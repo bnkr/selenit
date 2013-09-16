@@ -5,7 +5,7 @@ from servequnit.tester import QunitSeleniumTester, TestFailedError
 
 class QunitSeleniumTesterTestCase(TestCase):
     def _make_tester(self, server, suffix=None):
-        suffix = suffix or "oneshot/"
+        suffix = suffix or "test/"
         url = server.url + suffix
         hub = "http://127.0.0.1:4444/wd/hub"
         tester = QunitSeleniumTester(url=url, hub=hub)

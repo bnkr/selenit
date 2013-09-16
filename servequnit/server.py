@@ -89,9 +89,6 @@ class HandlerSettings(object):
     def test_root(self):
         return self.settings._test_dir
 
-    def default_test(self):
-        pass
-
     def bound_content(self):
         return list(self.settings._bind.iteritems())
 

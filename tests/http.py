@@ -23,7 +23,7 @@ class QunitRequestHandlerTestCase(TestCase):
         request.queue_recv("GET {url} HTTP/1.1".format(url=url))
         return request
 
-    def _make_settings(self, test_root=None, default_test=None, read=None,
+    def _make_settings(self, test_root=None, read=None,
                        scripts=None, styles=None):
         # TODO:
         #   Use a real server settings object.  It's simple enough that there's
@@ -32,7 +32,6 @@ class QunitRequestHandlerTestCase(TestCase):
         settings = Mock(spec=HandlerSettings)
         test_root = test_root or "/tmp"
         settings.test_root.return_value = test_root
-        settings.default_test.return_value = default_test
         settings.bound_content.return_value = read
         settings.scripts.return_value = scripts or []
         settings.styles.return_value = styles or []
@@ -129,79 +128,22 @@ class QunitRequestHandlerTestCase(TestCase):
         self.assertEquals(message, last_line)
 
     def test_runner_inserts_libraries(self):
-        with NamedTemporaryFile() as io:
-            io.write("summat")
-            io.flush()
-            request = self._make_request("/test/")
-            settings = self._make_settings(scripts=["/static/a", '/blah/b'],
-                                           default_test=io.name)
-            self._make_handler(request, settings)
+        request = self._make_request("/test/")
+        settings = self._make_settings(scripts=["/static/a", '/blah/b'])
+        self._make_handler(request, settings)
 
-            document = self._get_content(request)
-            self.assertTrue('src="/static/a"'.format(io.name) in document)
-            self.assertTrue('src="/blah/b"'.format(io.name) in document)
+        document = self._get_content(request)
+        self.assertTrue('src="/static/a"' in document)
+        self.assertTrue('src="/blah/b"' in document)
 
     def test_runner_inserts_styles(self):
-        request = self._make_request("/oneshot/")
+        request = self._make_request("/test/")
         settings = self._make_settings(styles=['/arbitrary_stuff/here'],)
         self._make_handler(request, settings)
         html = '<link rel="stylesheet" type="text/css" ' \
                'href="/arbitrary_stuff/here">'
         content = "".join(request.files[-1].writes)
         self.assertTrue(html in content)
-
-    def test_oneshot_runner_inserts_libraries(self):
-        request = self._make_request("/oneshot/")
-        settings = self._make_settings(scripts=['/arbitrary_stuff/here'],
-                                       default_test="/default-test-name")
-        self._make_handler(request, settings)
-        html = '<script type="text/javascript" ' \
-               'src="/arbitrary_stuff/here"></script>'
-        content = "".join(request.files[-1].writes)
-        self.assertTrue(html in content)
-        self.assertTrue('/default-test-name' not in content)
-
-    def test_runner_reponds_404_if_default_test_missing(self):
-        request = self._make_request("/test/")
-        settings = self._make_settings(default_test="/does-not-exist")
-        self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
-
-    def test_default_test_used_for_root(self):
-        with NamedTemporaryFile() as io:
-            io.write("summat")
-            io.flush()
-
-            settings = self._make_settings(default_test=io.name)
-            request = self._make_request("/test/")
-            self._make_handler(request, settings)
-            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
-
-            document = self._get_content(request)
-
-            self.assertTrue('src="/default-case/{0}"'.format(io.name) in document)
-
-            request = self._make_request("/default-case/arbitrary")
-            self._make_handler(request, settings)
-            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
-            self.assertEqual("summat", request.files[-1].writes[-1])
-
-    def test_404_if_missing_default_case(self):
-        settings = self._make_settings(default_test="/tmp.blah")
-        request = self._make_request("/default-case/arbitrary")
-        self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
-        message = "404: '/default-case/arbitrary' (maps to '/tmp.blah'): " \
-                  "does not exist\n"
-        self.assertEqual(message, request.files[-1].writes[-1])
-
-    def test_404_if_no_default_test(self):
-        settings = self._make_settings(default_test=None)
-        request = self._make_request("/default-case/")
-        self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
-        message = "404: '/default-case/': no default case configured\n"
-        self.assertEqual(message, request.files[-1].writes[-1])
 
     def test_unit_test_js_responds_404_on_missing_test(self):
         request = self._make_request("/unit/blah.js")
