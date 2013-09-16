@@ -1,7 +1,7 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, sys, logging, subprocess, os
+import argparse, sys, logging, subprocess, os, urlparse
 from servequnit.tester import QunitSeleniumTester
 from servequnit.factory import ServerFactory
 
@@ -25,6 +25,9 @@ class CliCommand(object):
         #   Present existence errors better.
 
         for name in (self.settings.files or []):
+            if not name:
+                continue
+
             if '=' in name:
                 ident, location = name.split("=")
                 if location.endswith(".css"):
@@ -32,6 +35,7 @@ class CliCommand(object):
                 else:
                     factory.bind_script(ident, location)
             else:
+                name = urlparse.urljoin("/static/", name)
                 if name.endswith(".css"):
                     factory.style(name)
                 else:
@@ -41,7 +45,7 @@ class CliCommand(object):
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
-        return dict(url=server.url + "default-case",
+        return dict(url=server.url + "oneshot",
                     hub=self.settings.webdriver,)
 
     def run(self):
@@ -62,7 +66,7 @@ class BrowserCommand(CliCommand):
             factory = self.get_server_factory()
             with factory.server_context() as server:
                 # could be a tester.BrowserTester?
-                subprocess.call(['firefox', server.url + "default-case/"])
+                subprocess.call(['firefox', server.url + "oneshot/"])
         except KeyboardInterrupt:
             pass
 
