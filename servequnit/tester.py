@@ -19,7 +19,7 @@ class QunitSeleniumTester(object):
         self.hub = hub
         self.capabilities = DesiredCapabilities.FIREFOX
         self.driver = None
-        self.timeout = 10
+        self.timeout = 5
 
     def _create_webdriver(self):
         self._log("connecting to selenium at {0}", self.hub)
@@ -42,24 +42,34 @@ class QunitSeleniumTester(object):
         wait = WebDriverWait(self.driver, self.timeout)
         failed, total = wait.until(select_results)
         self._log("{0} tests failed out of {1} total", failed, total)
-        return int(failed), int(total)
+        return int(failed.text), int(total.text)
 
     def _test(self):
         self._log("running test at {0}", self.url)
+        # TODO: deal with non 200
         self.driver.get(self.url)
+        # TODO: catch timeout here
         failed, total = self._get_results()
+
         if failed:
             raise TestFailedError("{0} tests failed".format(failed))
         elif total == 0:
             raise TestFailedError("no tests run")
 
+    def _test_or_screenshot(self):
+        try:
+            self._test()
+        except TestFailedError:
+            # TODO: take a screendump here
+            raise
+
     def run(self):
         """Execute the test."""
         self.driver = self._create_webdriver()
         try:
-            self._test()
+            self._test_or_screenshot()
         finally:
             # Important!
             self._log("quitting webdriver")
             self.driver.quit()
-        self.driver = None
+            self.driver = None

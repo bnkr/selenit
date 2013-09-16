@@ -6,14 +6,11 @@ QUNIT_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <title>{title}</title>
-<link rel="stylesheet" href="{qunit_css}">
-<script type="text/javascript" src="{qunit_js}"></script>
 {head}
 </head>
 <body>
-    <div id="qunit"></div>
-    <div id="qunit-fixture"></div>
-    {script_tag}
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
 </body>
 </html>\n"""
 
@@ -27,6 +24,17 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
       root.
     * configure libraries including your test and use a view which just displays
       those files.
+
+    Api:
+
+    * /test/ -- the default test if configured; tries to fail early.
+    * /test/path -- test which maps from the given path.
+    * /oneshot/ -- like /test/ but doesn't output errors if there's no default
+      test.  This can be used if you put all the test cases as head scripts.
+    * /read/ -- output data bound from a filesystem path.
+    * /default-case/ -- used by /test/.
+    * /unit/ -- test js.
+    * /static/ -- arbitrary file which comes from the doc root.
     """
 
     def _get_settings(self):
@@ -36,10 +44,10 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
     def get_handlers(self):
         return (
             ('/shutdown/', self._respond_stop,),
-            ('/test/', self._respond_runner,),
+            ('/test/', self._respond_test,),
+            ('/oneshot/', self._respond_oneshot,),
             ('/static/', self._respond_static,),
             ('/unit/', self._respond_unit,),
-            # TODO: rename this oneshot
             ('/default-case/', self._respond_default_case,),
             ('/read/', self._respond_read,),
         )
@@ -88,7 +96,11 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         # Causes an error later but does actually shut down.
         self.server.socket.close()
 
-    def _respond_runner(self):
+    def _respond_oneshot(self):
+        """Respond with a runner which only has the scripts in it."""
+        self._respond_runner()
+
+    def _respond_test(self):
         settings = self._get_settings()
         # TODO:
         #   append .js if none already -- ideally we visit test/case-name so
@@ -113,14 +125,28 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
 
             case = "/default-case/{0}".format(default)
 
-        tags = ['<script type="text/javascript" src="{0}"></script>'.format(name)
-                for name in self._get_settings().scripts()]
+        self._respond_runner([case])
+
+    def _respond_runner(self, extra_scripts=None):
+        """A runner with some scripts in it."""
+        extra_scripts = extra_scripts or []
+
+        def link_js(source):
+            return '<script type="text/javascript" src="{0}"></script>'.format(source)
+
+        def link_css(source):
+            return '<link rel="stylesheet" type="text/css" href="{0}"></script>'.format(source)
+
+        scripts = \
+            ["http://code.jquery.com/qunit/qunit-1.12.0.js"] + \
+            self._get_settings().scripts() + extra_scripts
+        css = ["http://code.jquery.com/qunit/qunit-1.12.0.css"]
+
+        tags = [link_js(name) for name in scripts]
+        tags += [link_css(name) for name in css]
 
         context = {
-            'script_tag': '<script type="text/javascript" src="{0}"></script>'.format(case),
             'title': "Qunit Test Case",
-            'qunit_css': "http://code.jquery.com/qunit/qunit-1.12.0.css",
-            'qunit_js': "http://code.jquery.com/qunit/qunit-1.12.0.js",
             'head': "\n".join(tags),
         }
         self._respond(QUNIT_HTML.format(**context))
@@ -141,6 +167,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         else:
             message += ": "
         message += "{0}".format(why)
+        self._log("404: {0}", message)
         self._respond_error(message, status=404)
 
     def _respond(self, content, status=200, content_type='text/html'):

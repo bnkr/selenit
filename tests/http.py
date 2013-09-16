@@ -24,6 +24,9 @@ class QunitRequestHandlerTestCase(TestCase):
         return request
 
     def _make_settings(self, test_root=None, default_test=None, read=None, scripts=[]):
+        # TODO:
+        #   Use a real server settings object.  It's simple enough that there's
+        #   really not need to mock it.
         server = Mock(spec=ReusableServer)
         settings = Mock(spec=HandlerSettings)
         test_root = test_root or "/tmp"
@@ -127,6 +130,17 @@ class QunitRequestHandlerTestCase(TestCase):
             document = self._get_content(request)
             self.assertTrue('src="/static/a"'.format(io.name) in document)
             self.assertTrue('src="/blah/b"'.format(io.name) in document)
+
+    def test_oneshot_runner_inserts_libraries(self):
+        request = self._make_request("/oneshot/")
+        settings = self._make_settings(scripts=['/arbitrary_stuff/here'],
+                                       default_test="/default-test-name")
+        self._make_handler(request, settings)
+        html = '<script type="text/javascript" ' \
+               'src="/arbitrary_stuff/here"></script>'
+        content = "".join(request.files[-1].writes)
+        self.assertTrue(html in content)
+        self.assertTrue('/default-test-name' not in content)
 
     def test_runner_reponds_404_if_default_test_missing(self):
         request = self._make_request("/test/")

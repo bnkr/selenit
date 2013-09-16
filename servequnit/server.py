@@ -1,4 +1,4 @@
-import threading, random, os, SocketServer, sys
+import threading, random, os, SocketServer, sys, urlparse
 
 from logging import getLogger
 
@@ -13,6 +13,8 @@ class ServerSettings(object):
         self._port = None
         self._host = None
         self._handler_factory = QunitRequestHandler
+        self._bind = {}
+        self._scripts = []
 
         # TODO: Not keen...
         for name, value in kw.iteritems():
@@ -35,6 +37,25 @@ class ServerSettings(object):
         self._port = int(value)
         return self
 
+    def script(self, url):
+        """Put this script tag in each."""
+        # TODO: needs test
+        self._scripts.append(url)
+        return self
+
+    def bind(self, name, path):
+        """Bind a url to a filesystem path."""
+        # TODO: needs test
+        assert os.path.exists(path)
+        self._bind[name] = path
+        return self
+
+    def bind_script(self, name, path):
+        # TODO: needs test
+        self.bind(name, path)
+        self.script(urlparse.urljoin("/read/", name))
+        return self
+
 class HandlerSettings(object):
     """Mostly so we have a nice interface to pass to Mock."""
     def __init__(self, settings):
@@ -47,10 +68,10 @@ class HandlerSettings(object):
         pass
 
     def bound_content(self):
-        pass
+        return list(self.settings._bind.iteritems())
 
     def scripts(self):
-        pass
+        return self.settings._scripts
 
 class ReusableServer(SocketServer.TCPServer):
     """Messing about to get the port to be re-usable."""
@@ -137,8 +158,8 @@ class TestServerThread(threading.Thread):
 
         self._log("server has started on {0}.".format(self.url))
 
-    def terminate_and_join(self, timeout=3):
-        "Stop the thread and wait for it to finish."
+    def wait_for_stop(self, timeout=3):
+        """Stop the thread and wait for it to finish."""
         if not self._httpd:
             self._log("server not running")
             return
@@ -151,6 +172,10 @@ class TestServerThread(threading.Thread):
             threading.Thread.join(self, timeout)
 
         self._log("collected server thread")
+
+    def terminate_and_join(self, timeout=3):
+        """Stop the thread and wait for it to finish."""
+        return self.wait_for_stop(timeout=timeout)
 
     def _log(self, message, *args, **kw):
         getLogger(__name__).info(message.format(*args, **kw))
