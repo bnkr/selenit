@@ -138,7 +138,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             return '<script type="text/javascript" src="{0}"></script>'.format(source)
 
         def link_css(source):
-            return '<link rel="stylesheet" type="text/css" href="{0}"></script>'.format(source)
+            return '<link rel="stylesheet" type="text/css" href="{0}">'.format(source)
 
         scripts = \
             ["http://code.jquery.com/qunit/qunit-1.12.0.js"] + \
