@@ -29,6 +29,11 @@ class ServerSettings(object):
         self._base_dir = value
         return self
 
+    def test_dir(self, value):
+        assert os.path.isabs(value)
+        self._test_dir = value
+        return self
+
     def host(self, value):
         self._host = value
         return self
@@ -62,7 +67,7 @@ class HandlerSettings(object):
         self.settings = settings
 
     def test_root(self):
-        pass
+        return self.settings._test_dir
 
     def default_test(self):
         pass
@@ -128,8 +133,7 @@ class TestServerThread(threading.Thread):
         """Sets up test server and loops over handling http requests.  You may
         call this directly to get a server in the same thread."""
         try:
-            wtf = "server starting at {0} (root {1})"
-            self._log(wtf.format(self.url, self.base_dir))
+            self._log("server starting at {0} in pwd {1}", self.url, self.base_dir)
             if self.base_dir:
                 os.chdir(self.base_dir)
             httpd = ReusableServer(self.handler_settings,

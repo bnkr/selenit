@@ -1,7 +1,7 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, sys, logging, subprocess
+import argparse, sys, logging, subprocess, os
 from servequnit.tester import QunitSeleniumTester
 from servequnit.factory import js_server, ServerFactory
 
@@ -15,6 +15,8 @@ class CliCommand(object):
         config = dict(
             port=self.settings.port,
             host=self.settings.host,
+            test_dir=self.settings.root,
+            base_dir=self.settings.doc_root,
         )
         return config
 
@@ -70,7 +72,12 @@ def get_settings(argv):
                         help="Run tests with selenium and exit.")
     parser.add_argument("-b", "--browser", action="store_true", default=False,
                         help="Run tests with a web browser.")
-    parser.add_argument("files", help="Stuff to source in the test file (css or js).", nargs="?")
+    parser.add_argument("-r", "--root", default=os.getcwd(),
+                        help="Root for test /unit files (js test files).")
+    parser.add_argument("-d", "--doc-root", default=os.getcwd(),
+                        help="Root for test /static files.")
+    parser.add_argument("files", nargs="?",
+                        help="Stuff to source in the test file (css or js).", )
 
     settings = parser.parse_args(argv[1:])
 
