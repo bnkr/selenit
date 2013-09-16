@@ -3,6 +3,7 @@
 # Build
 *.py[co]
 .coverage
+coverage-output
 # setup
 dist/
 MANIFEST
