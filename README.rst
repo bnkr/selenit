@@ -29,7 +29,7 @@ positional argument.
 
 Serve test scripts from within a root directory::
 
-  $ servequnit -p 8081 -H localhost --test-root app/tests
+  $ servequnit -p 8081 -H localhost --root app/tests
   $ sensible-browser http://localhost:8081/test/module/test.js
 
 If there is no test root or test directory then the `/test/` url will use the
@@ -37,16 +37,14 @@ server's root.
 
 Add library files to the document::
 
-  $ servequnit --lib /static/pants.js
+  $ servequnit pants.js
 
 The `/static/` prefix will cause files to be read from the server's document
-root which is determined by `--root` or pwd.
+root which is determined by `--doc-root` or pwd.
 
 Map a url onto an arbitrary file::
 
-  $ servequnit -p 8081 -H localhost \
-    --read pants=test.js \
-    --lib /read/pants
+  $ servequnit -p 8081 -H localhost pants=outside-of-root.js
 
 Selenium Usage
 --------------
@@ -87,11 +85,11 @@ Some more complicated settings might need this instead::
 
   from servequnit.factory import ServerFactory
 
-  factory = ServerFactory(host="localhost").lib("something").lib("other")
+  factory = ServerFactory(host="localhost").script("something").script("other")
   with factory.server_context() as server:
       urllib.urlopen(server.address).read()
 
-Note that it is very important that the server's `wait_for_terminate` method is
+Note that it is very important that the server's `wait_for_stop` method is
 called or test runners can deadlock at the end of executing all of your tests.
 These contexts all do that for you.
 
@@ -104,8 +102,8 @@ Not written yet.  Will look something like::
 
 Which is an alias for::
 
-  with js_server(**config) as server:
-      tester = QUnitSeleniumTester(server.address)
+  with js_server.context(**config) as server:
+      tester = QUnitSeleniumTester(url=server.address)
       tester.run()
 
 So you can use the selenium tester against static content if you want.
