@@ -2,10 +2,11 @@
 Runs an HTTP server which serves up qunit unit tests.
 """
 import argparse, sys, logging, subprocess
-from servequnit.seleniumtest import QunitSeleniumTester
+from servequnit.tester import QunitSeleniumTester
 from servequnit.factory import js_server, ServerFactory
 
 class CliCommand(object):
+    """Command pattern converts cli settings into an operation to run."""
     def __init__(self, settings):
         self.settings = settings
 
@@ -19,7 +20,8 @@ class CliCommand(object):
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
-        return dict()
+        return dict(url=server.url + "default-case",
+                    hub=self.settings.webdriver,)
 
     def run(self):
         try:
@@ -38,6 +40,7 @@ class BrowserCommand(CliCommand):
         try:
             server_config = self.get_server_config()
             with js_server.context(**server_config) as server:
+                # could be a tester.BrowserTester?
                 subprocess.call(['firefox', server.url + "default-case/"])
         except KeyboardInterrupt:
             pass

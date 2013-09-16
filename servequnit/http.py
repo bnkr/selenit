@@ -18,6 +18,17 @@ QUNIT_HTML = """<!DOCTYPE html>
 </html>\n"""
 
 class QunitRequestHandler(SimpleHTTPRequestHandler):
+    """
+    Three ways to use this (pretty much).
+
+    * set doc root and use static files to reference whatever on the local
+      filesystem.
+    * configure libraries and use /unit/ to reference tests relative to the test
+      root.
+    * configure libraries including your test and use a view which just displays
+      those files.
+    """
+
     def _get_settings(self):
         """For some reason we can't store this in the constructor."""
         return self.server.get_handler_settings()
@@ -28,6 +39,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             ('/test/', self._respond_runner,),
             ('/static/', self._respond_static,),
             ('/unit/', self._respond_unit,),
+            # TODO: rename this oneshot
             ('/default-case/', self._respond_default_case,),
             ('/read/', self._respond_read,),
         )
