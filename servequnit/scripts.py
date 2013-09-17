@@ -16,7 +16,7 @@ class CliCommand(object):
             port=self.settings.port,
             host=self.settings.host,
             test_dir=self.settings.root,
-            base_dir=self.settings.doc_root,
+            base_dir=os.getcwd(),
         )
 
         factory = ServerFactory(**config)
@@ -45,7 +45,7 @@ class CliCommand(object):
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
-        return dict(url=server.url + "oneshot",
+        return dict(url=server.url + "test",
                     hub=self.settings.webdriver,)
 
     def run(self):
@@ -66,7 +66,7 @@ class BrowserCommand(CliCommand):
             factory = self.get_server_factory()
             with factory.server_context() as server:
                 # could be a tester.BrowserTester?
-                subprocess.call(['firefox', server.url + "oneshot/"])
+                subprocess.call([self.settings.browser, server.url + "test/"])
         except KeyboardInterrupt:
             pass
 
@@ -93,14 +93,19 @@ def get_settings(argv):
                         help="Location of your webdriver HTTP endpoint.")
     parser.add_argument("-s", "--selenium", action="store_true", default=False,
                         help="Run tests with selenium and exit.")
-    parser.add_argument("-b", "--browser", action="store_true", default=False,
-                        help="Run tests with a web browser.")
+    parser.add_argument("-b", "--browser", default="unset", nargs="?",
+                        help="Run tests with a web browser command.")
     parser.add_argument("-r", "--root", default=os.getcwd(),
                         help="Root for test /unit files (js test files). (default: pwd)")
     parser.add_argument("files", nargs="?", action="append",
                         help="Stuff to source in the test file (css or js).", )
 
     settings = parser.parse_args(argv[1:])
+
+    if settings.browser == "unset":
+        settings.browser = None
+    elif settings.browser == None:
+        settings.browser = "firefox"
 
     return settings
 
