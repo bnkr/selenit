@@ -20,4 +20,5 @@ setup(name="servequnit", version="1.0.0",
       description="Run browser-based javascript unit tests.",
       long_description=open('README.rst').read(),
       author="James Webber", author_email="bunkerprivate@gmail.com",
-      packages=find_packages(), url="http://github.com/bnkr/servequnit",)
+      license="MIT", packages=find_packages(),
+      url="http://github.com/bnkr/servequnit",)
