@@ -18,7 +18,8 @@ def find_packages():
 
 setup(name="servequnit", version="1.0.0",
       description="Run browser-based javascript unit tests.",
-      long_description=open('README.rst').read(),
+      long_description=open('README.rst').read(), license="MIT",
       author="James Webber", author_email="bunkerprivate@gmail.com",
-      license="MIT", packages=find_packages(),
+      packages=['servequnit'], py_modules=find_packages(),
+      scripts=['scripts/servequnit',],
       url="http://github.com/bnkr/servequnit",)
