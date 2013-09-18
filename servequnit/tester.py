@@ -1,4 +1,5 @@
 import logging
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Remote as WebdriverRemote
 from selenium.webdriver import DesiredCapabilities
 from selenium.webdriver.support.wait import WebDriverWait
@@ -58,18 +59,22 @@ class QunitSeleniumTester(object):
         self._log("running test at {0}", self.url)
         # TODO: deal with non 200
         self.driver.get(self.url)
-        # TODO: catch timeout here
-        failed, total = self._get_results()
-        self._log("{0} tests failed out of {1} total", failed, total)
 
-        if failed:
-            raise TestFailedError("{0} tests failed".format(failed))
-        elif total == 0:
-            raise TestFailedError("no tests run")
+        try:
+            failed, total = self._get_results()
+            self._log("{0} tests failed out of {1} total", failed, total)
+        except TimeoutException:
+            raise TestFailedError("timed out waiting for results")
+
+        return failed, total
 
     def _test_or_screenshot(self):
         try:
-            self._test()
+            failed, total = self._test()
+            if failed:
+                raise TestFailedError("{0} tests failed".format(failed))
+            elif total == 0:
+                raise TestFailedError("no tests run")
         except TestFailedError:
             # TODO: take a screendump here
             raise
@@ -78,7 +83,7 @@ class QunitSeleniumTester(object):
         """Execute the test."""
         self.driver = self._create_webdriver()
         try:
-            self._test_or_screenshot()
+            return self._test_or_screenshot()
         finally:
             # Important!
             self._log("quitting webdriver")
