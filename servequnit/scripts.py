@@ -61,8 +61,13 @@ class SeleniumCommand(CliCommand):
                 tester_config = self.get_tester_config(server)
                 test = QunitSeleniumTester(**tester_config)
                 test.run()
+        except QunitSeleniumTester.FailureError as ex:
+            print "FAIL", ex
+            return 1
         except KeyboardInterrupt:
             pass
+
+        print "PASS"
 
         return 0
 
