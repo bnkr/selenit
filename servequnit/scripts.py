@@ -45,8 +45,14 @@ class CliCommand(object):
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
+        caps = {}
+        for capability in (self.settings.capability or []):
+            name, value = capability.split("=")
+            caps[name] = value
+
         return dict(url=server.url + "test/",
-                    hub=self.settings.webdriver,)
+                    hub=self.settings.webdriver,
+                    capabilities=caps)
 
     def run(self):
         try:
@@ -97,6 +103,8 @@ def get_settings(argv):
                         help="Run tests with a web browser command.")
     parser.add_argument("-r", "--root", default=os.getcwd(),
                         help="Root for test /unit files (js test files). (default: pwd)")
+    parser.add_argument("-c", "--capability", action="append", default=[],
+                        help="Capability of selenium node like 'browserName=firefox'.  Add multiple times.")
     parser.add_argument("files", nargs="+",
                         help="Stuff to source in the test file (css or js).",)
 

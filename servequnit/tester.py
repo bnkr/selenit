@@ -14,12 +14,15 @@ class QunitSeleniumTester(object):
     FAILED_CLASS = "failed"
     TOTAL_CLASS = "total"
 
-    def __init__(self, url, hub):
+    def __init__(self, url, hub, timeout=None, capabilities=None):
         self.url = url
         self.hub = hub
-        self.capabilities = DesiredCapabilities.FIREFOX
+        self.capabilities = capabilities or {}
         self.driver = None
-        self.timeout = 5
+        self.timeout = timeout or 5
+
+    def _log(self, message, *args, **kw):
+        logging.getLogger(__name__).info(message.format(*args, **kw))
 
     def _create_webdriver(self):
         self._log("connecting to selenium at {0}", self.hub)
@@ -27,9 +30,6 @@ class QunitSeleniumTester(object):
                         desired_capabilities=self.capabilities)
         self.driver = driver
         return driver
-
-    def _log(self, message, *args, **kw):
-        logging.getLogger(__name__).info(message.format(*args, **kw))
 
     def _get_results(self):
         def select_results(driver):
@@ -41,7 +41,6 @@ class QunitSeleniumTester(object):
         self._log("waiting for results with timeout {0}", self.timeout)
         wait = WebDriverWait(self.driver, self.timeout)
         failed, total = wait.until(select_results)
-        self._log("{0} tests failed out of {1} total", failed, total)
         return int(failed.text), int(total.text)
 
     def _test(self):
@@ -50,6 +49,7 @@ class QunitSeleniumTester(object):
         self.driver.get(self.url)
         # TODO: catch timeout here
         failed, total = self._get_results()
+        self._log("{0} tests failed out of {1} total", failed, total)
 
         if failed:
             raise TestFailedError("{0} tests failed".format(failed))
