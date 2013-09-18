@@ -7,11 +7,13 @@ from servequnit.http import QunitRequestHandler
 from servequnit.factory import ServerFactory, js_server
 from servequnit.server import TestServerThread, ServerSettings
 
+from ._util import dump_page
+
 class JsServerTestCase(TestCase):
     def test_server_lifecycle_is_managed(self):
         with js_server() as server:
             self.assertEqual(True, server.is_alive())
-            urllib.request.urlopen(server.url).read()
+            dump_page(server.url, "/test/")
 
         self.assertEqual(False, server.is_alive())
 
