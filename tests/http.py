@@ -49,13 +49,12 @@ class QunitRequestHandlerTestCase(TestCase):
         return handler
 
     def _get_content(self, request):
+        """Needs care because py2 does each line in an individual write whereas
+        py3 does not."""
         writes = request.files[-1].writes
-        for i, write in enumerate(writes):
-            if b'\r\n\r\n' in write:
-                data = i
-                break
-
-        return b"".join(writes[data:]).decode("utf-8")
+        transmission = b"".join(writes)
+        data = transmission.index(b'\r\n\r\n') + 4
+        return transmission[data:].decode("utf-8")
 
     def test_handler_works_with_socket_server(self):
         """Damn it is hard to create a fake server... so we'd better just check
