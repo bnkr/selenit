@@ -1,33 +1,44 @@
 import logging
-from selenium.webdriver import Remote
+from selenium.webdriver import Remote as WebdriverRemote
 from selenium.webdriver import DesiredCapabilities
 from selenium.webdriver.support.wait import WebDriverWait
 
 class TestFailedError(Exception):
     pass
 
+class TestResult(object):
+    """DTO explaining the test result."""
+
+    def __init__(self):
+        self.total = 0
+        self.failed = 0
+        self.timeout = False
+
 class QunitSeleniumTester(object):
     """Runs selenium tests against an arbitrary http location which serves a
     qunit test page."""
+    FailureError = TestFailedError
 
     QUNIT_RESULTS_ID = "qunit-testresult"
     FAILED_CLASS = "failed"
     TOTAL_CLASS = "total"
 
-    def __init__(self, url, hub, timeout=None, capabilities=None):
+    def __init__(self, url, hub, timeout=None, capabilities=None,
+                 selenium_factory=None):
         self.url = url
         self.hub = hub
         self.capabilities = capabilities or {}
         self.driver = None
         self.timeout = timeout or 5
+        self.factory = selenium_factory or WebdriverRemote
 
     def _log(self, message, *args, **kw):
         logging.getLogger(__name__).info(message.format(*args, **kw))
 
     def _create_webdriver(self):
         self._log("connecting to selenium at {0}", self.hub)
-        driver = Remote(command_executor=self.hub,
-                        desired_capabilities=self.capabilities)
+        driver = self.factory(command_executor=self.hub,
+                              desired_capabilities=self.capabilities)
         self.driver = driver
         return driver
 
