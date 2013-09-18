@@ -153,7 +153,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             'title': "Qunit Test Case",
             'head': "\n".join(tags),
         }
-        self._respond(QUNIT_HTML.format(**context))
+        self._respond(QUNIT_HTML.format(**context).encode("utf-8"))
 
     def _respond_from_filesystem(self, prefix, relative_to):
         local = self._get_local_path(path=self.path, prefix=prefix,
@@ -176,7 +176,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
 
     def _respond(self, content, status=200, content_type='text/html'):
         self.send_response(status)
-        self.send_header('Content-type', content_type)
+        self.send_header('Content-type', content_type + "; charset=utf-8")
         self.end_headers()
         self.wfile.write(content)
 

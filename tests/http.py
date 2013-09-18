@@ -50,8 +50,12 @@ class QunitRequestHandlerTestCase(TestCase):
 
     def _get_content(self, request):
         writes = request.files[-1].writes
-        data = writes.index("\r\n")
-        return "".join(writes[data:])
+        for i, write in enumerate(writes):
+            if b'\r\n\r\n' in write:
+                data = i
+                break
+
+        return b"".join(writes[data:]).decode("utf-8")
 
     def test_handler_works_with_socket_server(self):
         """Damn it is hard to create a fake server... so we'd better just check
@@ -62,7 +66,7 @@ class QunitRequestHandlerTestCase(TestCase):
     def test_root_404_lists_prefixes(self):
         request = self._make_request("/asdasd")
         handler = self._make_handler(request)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
         last_line = request.files[-1].writes[-1]
         paths = [path for (path, _) in handler.get_handlers()]
         message = "404: '/asdasd': prefix must be one of {0!r}\n".format(paths)
@@ -75,9 +79,9 @@ class QunitRequestHandlerTestCase(TestCase):
         with self._in_dir(os.path.dirname(__file__)):
             self._make_handler(request)
 
-        self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
 
-        class_definition = "class self.__class__.__name__(TestCase)"
+        class_definition = b"class self.__class__.__name__(TestCase)"
         output = request.files[-1].writes
         self.assertTrue(any((class_definition in line) for line in output))
 
@@ -86,7 +90,7 @@ class QunitRequestHandlerTestCase(TestCase):
 
         request = self._make_request("/static/pants")
         self._make_handler(request)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
         last_line = request.files[-1].writes[-1]
 
         message = "404: '/static/pants' (maps to '{0}'): does not exist\n"
@@ -95,13 +99,13 @@ class QunitRequestHandlerTestCase(TestCase):
 
     def test_runner_response_displays_html(self):
         with NamedTemporaryFile() as io:
-            io.write("summat")
+            io.write(b"summat")
             io.flush()
 
             settings = self._make_settings(test_root=os.path.dirname(io.name))
             request = self._make_request("/test/{0}".format(os.path.basename(io.name)))
             self._make_handler(request, settings)
-            self.assertEqual("HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
+            self.assertEqual(b"HTTP/1.0 200 OK\r\n", request.files[-1].writes[0])
 
             document = self._get_content(request)
 
@@ -115,14 +119,14 @@ class QunitRequestHandlerTestCase(TestCase):
         settings.get_handler_settings.return_value.test_root.return_value = None
         request = self._make_request("/test/test/data/passes.js")
         self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
         self.assertTrue("no test root" in request.files[-1].writes[-1])
 
     def test_runner_reponds_404_if_test_case_missing(self):
         request = self._make_request("/test/blah.js")
         settings = self._make_settings(test_root="/tmp/")
         self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
 
         message = "404: '/test/blah.js': test case '/unit/blah.js' (maps to " \
                   "'/tmp/blah.js'): does not exist\n"
@@ -144,14 +148,14 @@ class QunitRequestHandlerTestCase(TestCase):
         self._make_handler(request, settings)
         html = '<link rel="stylesheet" type="text/css" ' \
                'href="/arbitrary_stuff/here">'
-        content = "".join(request.files[-1].writes)
+        content = b"".join(request.files[-1].writes).decode("utf-8")
         self.assertTrue(html in content)
 
     def test_unit_test_js_responds_404_on_missing_test(self):
         request = self._make_request("/unit/blah.js")
         settings = self._make_settings(test_root="/tmp/")
         self._make_handler(request, settings)
-        self.assertEqual("HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
+        self.assertEqual(b"HTTP/1.0 404 Not Found\r\n", request.files[-1].writes[0])
 
         message = "404: '/unit/blah.js' (maps to '/tmp/blah.js'): does not exist\n"
         last_line = request.files[-1].writes[-1]
@@ -159,7 +163,8 @@ class QunitRequestHandlerTestCase(TestCase):
 
     def test_unit_test_response_from_filesytem(self):
         with NamedTemporaryFile() as io:
-            io.write("some stuff\n")
+            file_content = b"some stuff\n"
+            io.write(file_content)
             io.flush()
 
             request = self._make_request("/unit/" + os.path.basename(io.name))
@@ -167,11 +172,12 @@ class QunitRequestHandlerTestCase(TestCase):
             self._make_handler(request, settings)
 
             last_line = request.files[-1].writes[-1]
-            self.assertEquals("some stuff\n", last_line)
+            self.assertEquals(file_content, last_line)
 
     def test_bound_content_served_from_arbitary_path(self):
         with NamedTemporaryFile() as io:
-            io.write("some stuff\n")
+            file_data = b"some stuff\n"
+            io.write(file_data)
             io.flush()
 
             request = self._make_request("/read/pants")
@@ -179,7 +185,7 @@ class QunitRequestHandlerTestCase(TestCase):
             self._make_handler(request, settings)
 
             last_line = request.files[-1].writes[-1]
-            self.assertEquals("some stuff\n", last_line)
+            self.assertEquals(file_data, last_line)
 
     def test_bound_is_404_for_non_existing_path(self):
         request = self._make_request("/read/pants")

@@ -10,9 +10,12 @@ class MockFile(object):
 
     def readline(self, size=None):
         try:
-            return self.lines.pop(0) + b'\r\n'
+            line = self.lines.pop(0) + b'\r\n'
+            return line
         except IndexError:
-            return None
+            # Python 3 doesn't stop until it sees something like this, so None
+            # is no good there.
+            return b'\r\n'
 
     def write(self, data):
         self.writes.append(data)
@@ -35,7 +38,7 @@ class MockSocket(object):
         self.files = []
 
     def queue_recv(self, line):
-        self.lines.append(line)
+        self.lines.append(bytes(line.encode("latin-1")))
 
     def recv(self, bufsize, flags=None):
         data = self.lines.pop(0) + b'\r\n'
@@ -91,7 +94,7 @@ class MockSocket(object):
         return len(data)
 
     def getpeername(self):
-            return 'peer'
+        return 'peer'
 
     def close(self):
         pass
