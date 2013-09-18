@@ -165,7 +165,7 @@ class TestServerThread(threading.Thread):
             self._httpd = httpd
         except Exception as ex:
             if sync_errors:
-                self._error = (ex, None, sys.exc_info()[2])
+                self._error = (ex, sys.exc_info()[1], sys.exc_info()[2])
                 return
             else:
                 raise
