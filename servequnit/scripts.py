@@ -110,7 +110,7 @@ def get_settings(argv):
                         help="Root for test /unit files (js test files). (default: pwd)")
     parser.add_argument("-c", "--capability", action="append", default=[],
                         help="Capability of selenium node like 'browserName=firefox'.  Add multiple times.")
-    parser.add_argument("files", nargs="+",
+    parser.add_argument("files", nargs="*",
                         help="Stuff to source in the test file (css or js).",)
 
     settings = parser.parse_args(argv[1:])
