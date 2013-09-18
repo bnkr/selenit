@@ -39,6 +39,16 @@ class TestServerThreadTestCase(TestCase):
         self.assertRaises(IdentifiableException, server.wait_for_start)
         self.assertFalse(server.is_alive())
 
+    @patch('servequnit.server.ReusableServer')
+    def test_error_in_local_thread_raises_error(self, http_class):
+        """Regression case."""
+        class IdentifiableException(Exception):
+            pass
+
+        http_class.side_effect = IdentifiableException("pants")
+        server = self._make_server()
+        self.assertRaises(IdentifiableException, server.run_in_current_thread)
+
     def test_terminate_stopped_server_is_noop(self):
         server = self._make_server()
         self.assertEqual(False, server.is_alive())

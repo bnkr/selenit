@@ -149,9 +149,9 @@ class TestServerThread(threading.Thread):
         "Externally routable url to contact this server."
         return "http://{0}:{1}/".format(self.host, self.port)
 
-    def run(self):
-        """Sets up test server and loops over handling http requests.  You may
-        call this directly to get a server in the same thread."""
+    def run(self, sync_errors=True):
+        """Sets up test server and loops over handling http requests.  Do not
+        call this directly."""
         try:
             self._log("server starting at {0} in pwd {1}", self.url, self.base_dir)
             if self.base_dir:
@@ -161,8 +161,11 @@ class TestServerThread(threading.Thread):
                                    self.handler_factory)
             self._httpd = httpd
         except Exception as ex:
-            self._error = (ex, None, sys.exc_info()[2])
-            return
+            if sync_errors:
+                self._error = (ex, None, sys.exc_info()[2])
+                return
+            else:
+                raise
         finally:
             self._initialised.set()
 
@@ -170,6 +173,11 @@ class TestServerThread(threading.Thread):
         #   Exception in here will be lost
         self._httpd.serve_forever()
         self._log("server thread terminating")
+
+    def run_in_current_thread(self):
+        """Disables special threading error handling so you still get an
+        exception trace."""
+        self.run(sync_errors=False)
 
     def wait_for_start(self):
         "Start the thread and wait for the server to initialise without errors."

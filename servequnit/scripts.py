@@ -87,9 +87,9 @@ class ServerCommand(CliCommand):
     def run(self):
         factory = self.get_server_factory()
         server = factory.create()
-        # No need to thread; we just want the startup parts.
         try:
-            server.run()
+            # No need to thread; we just want the startup parts.
+            server.run_in_current_thread()
         except KeyboardInterrupt:
             pass
         return 0
