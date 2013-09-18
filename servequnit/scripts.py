@@ -97,8 +97,8 @@ def get_settings(argv):
                         help="Run tests with a web browser command.")
     parser.add_argument("-r", "--root", default=os.getcwd(),
                         help="Root for test /unit files (js test files). (default: pwd)")
-    parser.add_argument("files", nargs="?", action="append",
-                        help="Stuff to source in the test file (css or js).", )
+    parser.add_argument("files", nargs="+",
+                        help="Stuff to source in the test file (css or js).",)
 
     settings = parser.parse_args(argv[1:])
 
