@@ -45,7 +45,7 @@ class CliCommand(object):
 
 class SeleniumCommand(CliCommand):
     def get_tester_config(self, server):
-        return dict(url=server.url + "test",
+        return dict(url=server.url + "test/",
                     hub=self.settings.webdriver,)
 
     def run(self):
