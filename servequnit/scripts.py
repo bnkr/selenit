@@ -1,7 +1,9 @@
 """
 Runs an HTTP server which serves up qunit unit tests.
 """
-import argparse, sys, logging, subprocess, os, urlparse
+from __future__ import print_function
+import argparse, sys, logging, subprocess, os
+from six.moves import urllib
 from servequnit.tester import QunitSeleniumTester
 from servequnit.factory import ServerFactory
 
@@ -35,7 +37,7 @@ class CliCommand(object):
                 else:
                     factory.bind_script(ident, location)
             else:
-                name = urlparse.urljoin("/static/", name)
+                name = urllib.parse.urljoin("/static/", name)
                 if name.endswith(".css"):
                     factory.style(name)
                 else:
@@ -62,12 +64,12 @@ class SeleniumCommand(CliCommand):
                 test = QunitSeleniumTester(**tester_config)
                 test.run()
         except QunitSeleniumTester.FailureError as ex:
-            print "FAIL", ex
+            print("FAIL", ex)
             return 1
         except KeyboardInterrupt:
             pass
 
-        print "PASS"
+        print("PASS")
 
         return 0
 

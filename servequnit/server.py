@@ -1,4 +1,7 @@
-import threading, random, os, SocketServer, sys, urlparse
+import threading, random, os, sys, six
+
+from six.moves import socketserver
+from six.moves import urllib
 
 from logging import getLogger
 
@@ -21,7 +24,7 @@ class ServerSettings(object):
         self._styles = []
 
         # TODO: Not keen...
-        for name, value in kw.iteritems():
+        for name, value in six.iteritems(kw):
             getattr(self, name)(value)
 
     def handler_factory(self, factory):
@@ -67,7 +70,7 @@ class ServerSettings(object):
     def bind_script(self, name, path):
         """Shortcut."""
         self.bind(name, path)
-        self.script(urlparse.urljoin("/read/", name))
+        self.script(urllib.parse.urljoin("/read/", name))
         return self
 
     def bind_style(self, name, path):
@@ -90,7 +93,7 @@ class HandlerSettings(object):
         return self.settings._test_dir
 
     def bound_content(self):
-        return list(self.settings._bind.iteritems())
+        return list(six.iteritems(self.settings._bind))
 
     def styles(self):
         return self.settings._styles
@@ -98,7 +101,7 @@ class HandlerSettings(object):
     def scripts(self):
         return self.settings._scripts
 
-class ReusableServer(SocketServer.TCPServer):
+class ReusableServer(socketserver.TCPServer):
     """Messing about to get the port to be re-usable."""
     allow_reuse_address = True
 
@@ -112,14 +115,14 @@ class ReusableServer(SocketServer.TCPServer):
         #    the factory... having the hadnler settings here is needless
         #    coupling and would make it diffuclt for is to for example extract
         #    the server running stuff from the threading stuff
-        SocketServer.TCPServer.__init__(self, bind, handler)
+        socketserver.TCPServer.__init__(self, bind, handler)
         self.settings = settings
 
     def shutdown(self):
         """Try really hard to avoid port still in use errors.  Note that the
         function calls must be in this order!"""
         self.socket.close()
-        SocketServer.TCPServer.shutdown(self)
+        socketserver.TCPServer.shutdown(self)
 
     def get_handler_settings(self):
         return self.settings
@@ -186,7 +189,7 @@ class TestServerThread(threading.Thread):
 
         if self._error:
             self.join()
-            raise self._error[0], self._error[1], self._error[2]
+            six.reraise(self._error[0], self._error[1], self._error[2])
 
         self._log("server has started on {0}.".format(self.url))
 

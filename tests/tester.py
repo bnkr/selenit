@@ -4,7 +4,6 @@ from mock import Mock
 from servequnit.factory import ServerFactory
 from servequnit.tester import QunitSeleniumTester, TestFailedError
 
-
 class FakeElement(object):
     def __init__(self, driver, text):
         self.driver = driver

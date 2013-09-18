@@ -1,5 +1,8 @@
-import logging, os, re, posixpath, urllib, errno
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+import logging, os, re, posixpath, errno
+from six.moves import urllib
+from six.moves import SimpleHTTPServer as http_server
+
+SimpleHTTPRequestHandler = http_server.SimpleHTTPRequestHandler
 
 QUNIT_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -183,9 +186,9 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             path = path[len(prefix):]
         path = path.split('?',1)[0]
         path = path.split('#',1)[0]
-        path = posixpath.normpath(urllib.unquote(path))
+        path = posixpath.normpath(urllib.parse.unquote(path))
         words = path.split('/')
-        words = filter(None, words)
+        words = [word for word in words if word]
         path = relative_to
         for word in words:
             drive, word = os.path.splitdrive(word)

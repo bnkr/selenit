@@ -1,8 +1,11 @@
-import urllib, os, socket
+import os, socket
+from six.moves import urllib
 from mock import patch
 from unittest import TestCase
 
 from servequnit.server import TestServerThread, ServerSettings
+
+from ._util import dump_page
 
 class TestServerThreadTestCase(TestCase):
     def tearDown(self):
@@ -70,7 +73,7 @@ class TestServerThreadTestCase(TestCase):
 
         socket.create_connection((server.host, server.port), timeout=1)
 
-        self.assertNotEqual("", urllib.urlopen(server.url).read())
+        self.assertNotEqual("", dump_page(server.url, "/test/"))
 
     def test_reuse_port_is_ok(self):
         """Quite often you get 'port in use' after re-binding the same port

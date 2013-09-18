@@ -1,4 +1,5 @@
-import urllib, os, socket
+import os, socket
+from six.moves import urllib
 from mock import patch
 from unittest import TestCase
 
@@ -6,13 +7,11 @@ from servequnit.http import QunitRequestHandler
 from servequnit.factory import ServerFactory, js_server
 from servequnit.server import TestServerThread, ServerSettings
 
-import threading, random, os, SocketServer, SimpleHTTPServer
-
 class JsServerTestCase(TestCase):
     def test_server_lifecycle_is_managed(self):
         with js_server() as server:
             self.assertEqual(True, server.is_alive())
-            urllib.urlopen(server.url).read()
+            urllib.request.urlopen(server.url).read()
 
         self.assertEqual(False, server.is_alive())
 

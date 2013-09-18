@@ -1,21 +1,16 @@
-import urllib, os, contextlib
+import os, contextlib
 from tempfile import NamedTemporaryFile
 from mock import patch, Mock
 from unittest import TestCase
+from six.moves import urllib
 
 from servequnit.server import ReusableServer, HandlerSettings
 from servequnit.http import QunitRequestHandler
 from servequnit.factory import js_server
 
-from ._util import MockSocket
+from ._util import MockSocket, dump_page
 
 class QunitRequestHandlerTestCase(TestCase):
-    def test_handler_works_with_socket_server(self):
-        """Damn it is hard to create a fake server... so we'd better just check
-        it works with the real one."""
-        with js_server(handler_factory=QunitRequestHandler) as server:
-            urllib.urlopen(server.url).read()
-
     def _make_request(self, url):
         """There really doesn't seem to be a way to create HTTP requests as
         strings..."""
@@ -58,6 +53,12 @@ class QunitRequestHandlerTestCase(TestCase):
         data = writes.index("\r\n")
         return "".join(writes[data:])
 
+    def test_handler_works_with_socket_server(self):
+        """Damn it is hard to create a fake server... so we'd better just check
+        it works with the real one."""
+        with js_server(handler_factory=QunitRequestHandler) as server:
+            dump_page(server.url, "/test/")
+
     def test_root_404_lists_prefixes(self):
         request = self._make_request("/asdasd")
         handler = self._make_handler(request)
@@ -65,6 +66,7 @@ class QunitRequestHandlerTestCase(TestCase):
         last_line = request.files[-1].writes[-1]
         paths = [path for (path, _) in handler.get_handlers()]
         message = "404: '/asdasd': prefix must be one of {0!r}\n".format(paths)
+        self.assertEqual(message, last_line)
 
     def test_static_response_serves_from_pwd(self):
         basename = os.path.basename(__file__)

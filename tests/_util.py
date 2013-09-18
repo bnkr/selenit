@@ -1,4 +1,5 @@
 """Utilities nicked from python's unit tests"""
+from six.moves import urllib
 
 class MockFile(object):
     """Mock file object returned by MockSocket.makefile()."""
@@ -94,3 +95,9 @@ class MockSocket(object):
 
     def close(self):
         pass
+
+def dump_page(*url_parts):
+    """Test an HTTP connection to the page and ignore some errors.  Basically
+    just asserts that the networking part of the server works."""
+    url = urllib.parse.urljoin(*url_parts)
+    return urllib.request.urlopen(url).read()
