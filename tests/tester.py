@@ -110,3 +110,14 @@ class QunitSeleniumTesterTestCase(TestCase):
         with factory.run() as server:
             tester = self._make_tester(server, webdriver=driver)
             self.assertRaises(TestFailedError, tester.run)
+
+    def test_404_is_failure(self):
+        """Because selenium won't give us the status code, the best we can do is
+        make sure the timeout is noticed.  Therefore this test is only really
+        relevant when running against a Real selenium server."""
+        timeout = selenium.common.exceptions.TimeoutException("nope")
+        driver = FakeSelenium()
+        driver.mock_result_exception(timeout)
+        with ServerFactory().run() as server:
+            tester = self._make_tester(server, suffix="/404ish", webdriver=driver)
+            self.assertRaises(TestFailedError, tester.run)

@@ -57,7 +57,9 @@ class QunitSeleniumTester(object):
 
     def _test(self):
         self._log("running test at {0}", self.url)
-        # TODO: deal with non 200
+
+        # We can't handle non-200 because selenium doesn't implement such a
+        # thing.
         self.driver.get(self.url)
 
         try:
