@@ -1,4 +1,4 @@
-import os
+import os, selenium
 from unittest import TestCase
 from mock import Mock
 from servequnit.factory import ServerFactory
@@ -101,7 +101,6 @@ class QunitSeleniumTesterTestCase(TestCase):
             self.assertRaises(TestFailedError, tester.run)
 
     def test_timeout_fetching_results_is_failure(self):
-        import selenium
         timeout = selenium.common.exceptions.TimeoutException("too long")
         driver = FakeSelenium()
         driver.mock_result_exception(timeout)
