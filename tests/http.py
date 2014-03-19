@@ -203,3 +203,12 @@ class QunitRequestHandlerTestCase(TestCase):
         message = "404: '/read/pants': no file bound for 'pants'\n"
         last_line = request.files[-1].writes[-1]
         self.assertEquals(message, last_line)
+
+    def test_favicon_respons_with_404(self):
+        settings = self._make_settings()
+        request = self._make_request("/favicon.ico")
+        self._make_handler(request, settings)
+
+        message = "No favicon."
+        last_line = request.files[-1].writes[-1]
+        self.assertEquals(message, last_line)

@@ -49,6 +49,7 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
             ('/static/', self._respond_static,),
             ('/unit/', self._respond_unit,),
             ('/read/', self._respond_read,),
+            ('/favicon.ico', self._respond_favicon,),
         )
 
     def do_GET(self):
@@ -62,6 +63,10 @@ class QunitRequestHandler(SimpleHTTPRequestHandler):
         allowed_paths = [prefix for (prefix, _) in prefix_handlers]
         error = "prefix must be one of {0!r}".format(allowed_paths)
         self._respond_404(error)
+
+    def _respond_favicon(self):
+        """Avoid spammy log messages."""
+        self._respond("No favicon.", status=404, content_type="text/plain")
 
     def _respond_read(self):
         content = self._get_settings().bound_content() or []
