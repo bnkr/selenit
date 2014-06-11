@@ -1,0 +1,55 @@
+from __future__ import print_function
+import sys, argparse, selenium, contextlib, os
+
+from selenium.webdriver import Remote as WebdriverRemote
+
+class ScreenitCli(object):
+    """Command-line runner for screenit."""
+    def __init__(self, argv):
+        self.argv = argv
+
+    def run(self):
+        parser = self.get_parser()
+        settings = self.get_settings(parser)
+
+        # There is a takesScreenshot capability.
+        capabilities = {'browserName': "firefox"}
+
+        remote = WebdriverRemote(command_executor=settings.webdriver,
+                                 desired_capabilities=capabilities)
+
+        with contextlib.closing(remote) as driver:
+            for number, url in enumerate(settings.url):
+                output = self.find_output_name(number + 1, overwrite=False)
+                driver.get(url)
+                print("{0} {1}".format(output, url))
+                driver.save_screenshot(output)
+
+    def find_output_name(self, number, overwrite):
+        name = "{0:03d}.png".format(number)
+        tries = 1
+        while os.path.exists(name) and not overwrite:
+            if tries > 10:
+                raise Exception("too many tries")
+
+            name = "{0:03d}.{1}.png".format(number, tries)
+            tries += 1
+
+        return name
+
+    def get_parser(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("url", nargs="+")
+        parser.add_argument("-w", "--webdriver",
+                            help="Location to hub or webdriver.")
+        parser.add_argument("-o", "--output",
+                            help="Output screenshots to this directory.  (Default pwd)")
+        return parser
+
+
+    def get_settings(self, parser):
+        return parser.parse_args(self.argv[1:])
+
+def screenit_main():
+    """Entry point."""
+    sys.exit(ScreenitCli(sys.argv).run())
