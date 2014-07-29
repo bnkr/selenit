@@ -15,6 +15,10 @@ class ScreenitCli(object):
         # There is a takesScreenshot capability.
         capabilities = {'browserName': "firefox"}
 
+        for capability in settings.capabilities:
+            name, value = capability.split("=")
+            capabilities[name.strip()] = value.strip()
+
         remote = WebdriverRemote(command_executor=settings.webdriver,
                                  desired_capabilities=capabilities)
 
@@ -44,6 +48,8 @@ class ScreenitCli(object):
                             help="Location to hub or webdriver.")
         parser.add_argument("-o", "--output",
                             help="Output screenshots to this directory.  (Default pwd)")
+        parser.add_argument("-c", "--capabilities", action="append", default=[],
+                            help="Add a capability.  (Default pwd)")
         return parser
 
 
