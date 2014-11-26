@@ -24,19 +24,24 @@ class ScreenitCli(object):
 
         with contextlib.closing(remote) as driver:
             for number, url in enumerate(settings.url):
-                output = self.find_output_name(number + 1, overwrite=False)
+                output = self.find_output_name(settings.output, number + 1, overwrite=False)
                 driver.get(url)
                 print("{0} {1}".format(output, url))
                 driver.save_screenshot(output)
 
-    def find_output_name(self, number, overwrite):
+    def find_output_name(self, base, number, overwrite):
         name = "{0:03d}.png".format(number)
+        if base:
+            name = os.path.join(base, name)
+
         tries = 1
         while os.path.exists(name) and not overwrite:
             if tries > 10:
                 raise Exception("too many tries")
 
             name = "{0:03d}.{1}.png".format(number, tries)
+            if base:
+                name = os.path.join(base, name)
             tries += 1
 
         return name
