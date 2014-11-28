@@ -49,14 +49,13 @@ class ScreenitCli(object):
     def get_parser(self):
         parser = argparse.ArgumentParser()
         parser.add_argument("url", nargs="+")
-        parser.add_argument("-w", "--webdriver",
+        parser.add_argument("-w", "--webdriver", required=True,
                             help="Location to hub or webdriver.")
         parser.add_argument("-o", "--output",
                             help="Output screenshots to this directory.  (Default pwd)")
         parser.add_argument("-c", "--capabilities", action="append", default=[],
                             help="Add a capability.  (Default pwd)")
         return parser
-
 
     def get_settings(self, parser):
         return parser.parse_args(self.argv[1:])
