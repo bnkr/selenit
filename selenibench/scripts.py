@@ -1,5 +1,7 @@
 from __future__ import print_function
 import sys, argparse, selenium, contextlib, os
+from datetime import datetime as DateTime
+from datetime import timedelta as TimeDelta
 
 from selenium.webdriver import Remote as WebDriverRemote
 from selenium.webdriver.support.ui import WebDriverWait
@@ -26,8 +28,30 @@ class SelenibenchCli(object):
             return driver.execute_script("return (document.readyState == 'complete')")
         WebDriverWait(driver, 15).until(is_loaded)
 
-        timings = print(driver.execute_script("return window.performance.timing"))
-        print(timings)
+        timings = driver.execute_script("return window.performance.timing")
+
+        times = {}
+        for key, value in timings.iteritems():
+            if not isinstance(value, int):
+                continue
+
+            if value in (True, False):
+                continue
+
+            value = str(value)
+            unixey = int(value[0:10])
+
+            if value[10:]:
+                ms = int(value[10:])
+            else:
+                ms = 0
+
+            converted = DateTime.fromtimestamp(unixey)
+            converted += TimeDelta(milliseconds=ms)
+
+            times[key] = converted
+
+        print(times)
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
