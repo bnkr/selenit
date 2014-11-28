@@ -1,0 +1,11 @@
+#!/usr/bin/python
+"""
+Bootstrap to load selenibench library.  If you're using setup.py or buildout
+(and I bothered to make one) then this should be redundant because you can use
+entry points.  If you're packaging for .deb or similar then make a custom
+version of this.
+"""
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from selenibench.scripts import selenibench_main
+selenibench_main()
