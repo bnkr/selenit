@@ -1,7 +1,8 @@
 from __future__ import print_function
 import sys, argparse, selenium, contextlib, os
 
-from selenium.webdriver import Remote as WebdriverRemote
+from selenium.webdriver import Remote as WebDriverRemote
+from selenium.webdriver.support.ui import WebDriverWait
 
 class SelenibenchCli(object):
     def __init__(self, argv):
@@ -11,13 +12,22 @@ class SelenibenchCli(object):
         parser = self.get_parser()
         settings = self.get_settings(parser)
 
-        remote = WebdriverRemote(command_executor=settings.webdriver,
+        remote = WebDriverRemote(command_executor=settings.webdriver,
                                  desired_capabilities=settings.capabilities)
 
         with contextlib.closing(remote) as driver:
-            driver.get(settings.url)
+            driver.get(settings.url[0])
+            self.find_load_times(driver)
 
         return 0
+
+    def find_load_times(self, driver):
+        def is_loaded(driver):
+            return driver.execute_script("return (document.readyState == 'complete')")
+        WebDriverWait(driver, 15).until(is_loaded)
+
+        timings = print(driver.execute_script("return window.performance.timing"))
+        print(timings)
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
