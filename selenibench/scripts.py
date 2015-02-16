@@ -1,5 +1,5 @@
 from __future__ import print_function
-import sys, argparse, selenium, contextlib, os
+import sys, argparse, selenium, contextlib, os, json
 from datetime import datetime as DateTime
 from datetime import timedelta as TimeDelta
 
@@ -7,6 +7,8 @@ from selenium.webdriver import Remote as WebDriverRemote
 from selenium.webdriver.support.ui import WebDriverWait
 
 class SelenibenchCli(object):
+    """Downloads timings from the web performance api."""
+
     def __init__(self, argv):
         self.argv = argv
 
@@ -14,16 +16,21 @@ class SelenibenchCli(object):
         parser = self.get_parser()
         settings = self.get_settings(parser)
 
+        if settings.log_json:
+            io = open(settings.log_json, 'w')
+        else:
+            io = None
+
         remote = WebDriverRemote(command_executor=settings.webdriver,
                                  desired_capabilities=settings.capabilities)
-
-        with contextlib.closing(remote) as driver:
-            driver.get(settings.url[0])
-            self.find_load_times(driver)
+        for _ in range(0, settings.number):
+            with contextlib.closing(remote) as driver:
+                driver.get(settings.url[0])
+                self.find_load_times(driver, io)
 
         return 0
 
-    def find_load_times(self, driver):
+    def find_load_times(self, driver, log):
         def is_loaded(driver):
             return driver.execute_script("return (document.readyState == 'complete')")
         WebDriverWait(driver, 15).until(is_loaded)
@@ -51,6 +58,15 @@ class SelenibenchCli(object):
 
             times[key] = converted
 
+        # This kind of thing really needs unit tests.  The thing takes so long
+        # to run it's just going to break horribly.
+        if log:
+            serialisable = dict(
+                    (key, value.isoformat())
+                    for key, value in times.iteritems())
+            log.write(json.dumps(serialisable))
+            log.write("\n")
+
         print(times)
 
     def get_parser(self):
@@ -59,7 +75,11 @@ class SelenibenchCli(object):
         parser.add_argument("-w", "--webdriver", required=True,
                             help="Location to hub or webdriver.")
         parser.add_argument("-c", "--capabilities", action="append", default=[],
-                            help="Add a capability.  (Default pwd)")
+                            help="Add a capability.")
+        parser.add_argument("-n", "--number", type=int, default=1,
+                            help="How many requests to run.")
+        parser.add_argument("-j", "--log-json", default=None,
+                            help="Log json per-line for each hit.")
         return parser
 
     def get_settings(self, parser):
