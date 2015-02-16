@@ -21,15 +21,14 @@ class SelenibenchCli(object):
         else:
             io = None
 
-        remote = WebDriverRemote(command_executor=settings.webdriver,
-                                 desired_capabilities=settings.capabilities)
-
         runs = 0
         contiguous_failures = 0
 
         while runs < settings.number:
             runs += 1
 
+            remote = WebDriverRemote(command_executor=settings.webdriver,
+                                     desired_capabilities=settings.capabilities)
             with contextlib.closing(remote) as driver:
                 try:
                     driver.get(settings.url[0])
