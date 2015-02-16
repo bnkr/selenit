@@ -37,12 +37,13 @@ class SelenibenchCli(object):
                     contiguous_failures = 0
                 except:
                     if contiguous_failures > 3:
+                        print("Failure getting load times.  Giving up.")
                         raise
 
                     contiguous_failures += 1
                     runs -= 1
+                    print("Failure getting load times.  Will try again.")
                     traceback.print_ex()
-
 
         return 0
 
