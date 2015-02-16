@@ -1,5 +1,5 @@
 from __future__ import print_function
-import sys, argparse, selenium, contextlib, os, json
+import sys, argparse, selenium, contextlib, os, json, traceback
 from datetime import datetime as DateTime
 from datetime import timedelta as TimeDelta
 
@@ -23,10 +23,26 @@ class SelenibenchCli(object):
 
         remote = WebDriverRemote(command_executor=settings.webdriver,
                                  desired_capabilities=settings.capabilities)
-        for _ in range(0, settings.number):
+
+        runs = 0
+        contiguous_failures = 0
+
+        while runs < settings.number:
+            runs += 1
+
             with contextlib.closing(remote) as driver:
-                driver.get(settings.url[0])
-                self.find_load_times(driver, io)
+                try:
+                    driver.get(settings.url[0])
+                    self.find_load_times(driver, io)
+                    contiguous_failures = 0
+                except:
+                    if contiguous_failures > 3:
+                        raise
+
+                    contiguous_failures += 1
+                    runs -= 1
+                    traceback.print_ex()
+
 
         return 0
 
