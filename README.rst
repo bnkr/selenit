@@ -3,8 +3,8 @@ Selenit
 
 Selenium automation utilities.
 
-.. image:: https://travis-ci.org/bnkr/servequnit.png?branch=master
-  :target: https://travis-ci.org/bnkr/servequnit
+.. image:: https://travis-ci.org/bnkr/selenit.png?branch=master
+  :target: https://travis-ci.org/bnkr/selenit
 
 Installation
 ------------
