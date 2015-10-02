@@ -23,28 +23,55 @@ class ScreenitCli(object):
                                  desired_capabilities=capabilities)
 
         with contextlib.closing(remote) as driver:
-            for number, url in enumerate(settings.url):
-                output = self.find_output_name(settings.output, number + 1, overwrite=False)
-                driver.get(url)
-                print("{0} {1}".format(output, url))
+            for task in self.get_tasks(settings):
+                output = self.find_output_name(settings.output, task, overwrite=False)
+
+                driver.get(task['url'])
+                print("{0} {1}".format(output, task['url']))
                 driver.save_screenshot(output)
 
-    def find_output_name(self, base, number, overwrite):
-        name = "{0:03d}.png".format(number)
-        if base:
-            name = os.path.join(base, name)
+    def get_tasks(self, settings):
+        tasks = []
 
+        for number, arg in enumerate(settings.url):
+            if '://' in arg:
+                tasks.append({'url': arg, 'name': self._url_to_path(arg)})
+                continue
+
+            for line in open(arg):
+                if not line.strip():
+                    continue
+
+                if ' ' in line:
+                    name, url = line.strip().split(' ', 1)
+                else:
+                    url = line.strip()
+                    name = self._url_to_path(url)
+
+                tasks.append({'url': url.strip(), 'name': name})
+
+        return tasks
+
+    def _url_to_path(self, url):
+        """Cheap and cheerful but works for most things."""
+        return os.path.basename(url)
+
+    def find_output_name(self, base, task, overwrite):
+        name = task['name']
         tries = 1
-        while os.path.exists(name) and not overwrite:
-            if tries > 10:
-                raise Exception("too many tries")
 
-            name = "{0:03d}.{1}.png".format(number, tries)
-            if base:
-                name = os.path.join(base, name)
+        full_path = os.path.join(base, name) + ".png"
+
+        while os.path.exists(full_path) and not overwrite:
+            if tries > 10:
+                raise Exception("too many tries to find a unique name")
+
+            uniqued = "{0}.{1}.png".format(name, tries)
+            full_path = os.path.join(base, uniqued)
+
             tries += 1
 
-        return name
+        return full_path
 
     def get_parser(self):
         parser = argparse.ArgumentParser()

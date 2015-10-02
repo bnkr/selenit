@@ -46,7 +46,7 @@ a selenium webdriver.
 A simple example::
 
   $ screenit -w "http://localhost:4444/wd/hub" "http://google.com"
-  $ stat 001.png
+  $ stat google.com.png
 
 See `--help` for more.
 
