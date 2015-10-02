@@ -19,9 +19,13 @@ I suggest you use a virtual environment to do this::
 
   $ cd screenit # cloned source
   $ virtualenv venv
-  $ venv/bin/pip install argparse
-  $ venv/bin/pip install selenium
-  $ venv/bin/python bin/screenit --help
+  $ venv/bin/pip install -r requirements.txt
+  $ venv/bin/python setup,py develop
+  $ venv/bin/screenit --help
+
+Test coverage can be generated something like this::
+
+  nosetests --with-coverage --cover-package=servequnit --cover-html --cover-html-dir=./coverage-output --cover-tests
 
 Selenibench
 -----------
