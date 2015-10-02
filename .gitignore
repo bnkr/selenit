@@ -10,9 +10,3 @@ coverage-output
 dist/
 build/
 MANIFEST
-# Buildout stuff
-bin/
-eggs/
-develop-eggs/
-parts/
-.installed.cfg
