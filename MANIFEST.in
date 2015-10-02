@@ -1,0 +1,9 @@
+include *.py
+include buildout.cfg
+include *.rst
+include *.cfg
+include MANIFEST.in
+recursive-include build-aux *
+recursive-include tests *.py
+recursive-include servequnit *.py
+exclude .installed.cfg

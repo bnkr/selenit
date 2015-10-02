@@ -1,4 +1,18 @@
-*.py[co]
-.*.sw[po]
+# Editor stuff
+*.sw[po]
+# Build
 venv/
 bin/vselenibench
+*.py[co]
+.coverage
+coverage-output
+# setup
+dist/
+build/
+MANIFEST
+# Buildout stuff
+bin/
+eggs/
+develop-eggs/
+parts/
+.installed.cfg
