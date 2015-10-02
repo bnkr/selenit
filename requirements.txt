@@ -1,0 +1,5 @@
+six
+nose
+mock
+selenium
+argparse

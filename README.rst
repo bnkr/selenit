@@ -3,6 +3,9 @@ Selenit
 
 Selenium automation utilities.
 
+.. image:: https://travis-ci.org/bnkr/servequnit.png?branch=master
+  :target: https://travis-ci.org/bnkr/servequnit
+
 Installation
 ------------
 
@@ -63,9 +66,6 @@ ServeQUnit
 ServeQUnit is a simple python HTTP server which serves the QUnit test runner
 (probably others later) and your javascript.  Library functions are available to
 embed the server in your tests and to interpret the test result using selenium.
-
-.. image:: https://travis-ci.org/bnkr/servequnit.png?branch=master
-  :target: https://travis-ci.org/bnkr/servequnit
 
 Features
 ~~~~~~~~
