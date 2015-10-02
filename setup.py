@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import os, glob
-from distutils.core import setup
+from setuptools import setup
 
 def find_packages():
     here = os.path.dirname(os.path.realpath(__file__))
@@ -16,10 +16,18 @@ def find_packages():
 
     return packages
 
-setup(name="servequnit", version="1.0.0",
-      description="Run browser-based javascript unit tests.",
+setup(name="selenit", version="1.0.0",
+      description="Selenium automation utilities.",
       long_description=open('README.rst').read(), license="MIT",
       author="James Webber", author_email="bunkerprivate@gmail.com",
-      packages=['servequnit'], py_modules=find_packages(),
-      scripts=['scripts/servequnit',],
-      url="http://github.com/bnkr/servequnit",)
+      package_dir={'servequnit': 'servequnit', 'selenibench': 'selenibench', 'screenit': 'screenit'}, 
+      py_modules=find_packages(),
+      entry_points={
+          'console_scripts': [
+              'servequnit = servequnit.scriprts:servequnit_main',
+              'selenibench = selenibench.scriprts:selenibench_main',
+              'screenit = screenit.scriprts:screenit_main',
+           ],
+      },
+      url="http://github.com/bnkr/selenit",
+      test_suite='tests')

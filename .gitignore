@@ -10,3 +10,4 @@ coverage-output
 dist/
 build/
 MANIFEST
+*.egg-info/
