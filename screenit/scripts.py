@@ -27,6 +27,10 @@ class ScreenitCli(object):
             state = driver.execute_script('return document.readyState')
             return state == 'complete'
 
+        # Selenium fails silently (or seems to) unless we check first.
+        if not os.path.isdir(settings.output):
+            raise Exception("not a directory: {}".format(settings.output))
+
         with contextlib.closing(remote) as driver:
             for task in self.get_tasks(settings):
                 try:
@@ -96,7 +100,7 @@ class ScreenitCli(object):
         parser.add_argument("url", nargs="+")
         parser.add_argument("-w", "--webdriver", required=True,
                             help="Location to hub or webdriver.")
-        parser.add_argument("-o", "--output",
+        parser.add_argument("-o", "--output", default=os.getcwd(),
                             help="Output screenshots to this directory.  (Default pwd)")
         parser.add_argument( "--wait-timeout", default=10, type=int,
                             help="Time to wait until document is ready.")
